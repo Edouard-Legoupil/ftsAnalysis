@@ -1,0 +1,150 @@
+# `{ftsAnalysis}`
+
+The goal of `{ftsAnalysis}` is to provide a set of metrics, index,
+analysis and visualization to better understand data from [OCHA
+Financial Tracking
+Service](https://fts.unocha.org/content/about-fts-using-fts-data).
+
+This package enables the creation of detailed reports, with included
+automated AI analysis from 3 angles:
+
+- Donors
+- Recipients
+- Destinations
+
+## Installation
+
+You can install the development version of ftsAnalysis from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("pak")
+pak::pak("Edouard-Legoupil/ftsAnalysis")
+```
+
+The package includes a function to build data stories from each plot.
+
+To use it you can use Ollama or Set the LLM inference API key in your
+environment with:
+
+``` r
+Sys.setenv(OPENAI_API_KEY = "<YOUR_OPENAI_KEY>")
+Sys.setenv(GEMINI_API_KEY = "<YOUR_GOOGLE_GEMINI_KEY>")
+Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
+```
+
+# Package index
+
+## All functions
+
+- [`fetch_fts_data()`](fetch_fts_data.md) : Fetch FTS Flow Data with
+  Pagination
+- [`filter_flows_for_indicators()`](filter_flows_for_indicators.md) :
+  Filter and Normalize FTS Funding Flows for Indicator Computation
+- [`flows`](flows.md) : FTS Humanitarian Funding Flows Dataset
+- [`generate_plot_story()`](generate_plot_story.md) : Generate
+  Humanitarian Data Story from ggplot
+- [`indicator_cross_donor_systemic_destination_alignment()`](indicator_cross_donor_systemic_destination_alignment.md)
+  : Donors Systemic: Destination Alignment (Optimized)
+- [`indicator_destination_dependency()`](indicator_destination_dependency.md)
+  : Destination-Focused: Dependency Index
+- [`indicator_destination_donor_diversity()`](indicator_destination_donor_diversity.md)
+  : Destination-Focused: Donor Diversity Index
+- [`indicator_destination_donor_retention()`](indicator_destination_donor_retention.md)
+  : Destination-Focused: Donor Retention Index
+- [`indicator_destination_earmarking_flexibility()`](indicator_destination_earmarking_flexibility.md)
+  : Earmarking Flexibility
+- [`indicator_destination_funding_diversity()`](indicator_destination_funding_diversity.md)
+  : Destination-Focused: Funding Diversity Index
+- [`indicator_destination_funding_stability()`](indicator_destination_funding_stability.md)
+  : Destination-Focused: Funding Stability Index
+- [`indicator_destination_funding_trend()`](indicator_destination_funding_trend.md)
+  : Destination-Focused: Funding Growth Trend
+- [`indicator_destination_funding_volatility()`](indicator_destination_funding_volatility.md)
+  : Destination-Focused: Funding Volatility Index
+- [`indicator_destination_modality_balance()`](indicator_destination_modality_balance.md)
+  : Destination-Focused: Modality Balance
+- [`indicator_destination_modality_innovation()`](indicator_destination_modality_innovation.md)
+  : Modality Innovation
+- [`indicator_destination_pipeline_visibility()`](indicator_destination_pipeline_visibility.md)
+  : Pipeline Visibility
+- [`indicator_donor_destination_concentration()`](indicator_donor_destination_concentration.md)
+  : Donor→Destination: Portfolio Concentration Index
+- [`indicator_donor_destination_coverage()`](indicator_donor_destination_coverage.md)
+  : Donor→Destination: Coverage Index
+- [`indicator_donor_destination_earmarking_flexibility()`](indicator_donor_destination_earmarking_flexibility.md)
+  : Donor-Destination Earmarking Flexibility
+- [`indicator_donor_destination_risk_tolerance()`](indicator_donor_destination_risk_tolerance.md)
+  : Donor Risk Tolerance
+- [`indicator_donor_destination_stability()`](indicator_donor_destination_stability.md)
+  : Donor→Destination: Geographic Stability Index
+- [`indicator_donor_destination_trend()`](indicator_donor_destination_trend.md)
+  : Donor→Destination: Geographic Focus Trend
+- [`indicator_donor_funding_consistency()`](indicator_donor_funding_consistency.md)
+  : Funding Consistency Index
+- [`indicator_donor_funding_growth()`](indicator_donor_funding_growth.md)
+  : Funding Growth Trend
+- [`indicator_donor_geographic_alignment()`](indicator_donor_geographic_alignment.md)
+  : Geographic Alignment
+- [`indicator_donor_knowledge_sharing_intensity()`](indicator_donor_knowledge_sharing_intensity.md)
+  : Knowledge Sharing Intensity
+- [`indicator_donor_recipient_concentration()`](indicator_donor_recipient_concentration.md)
+  : Donor→Recipient: Funding Concentration Index
+- [`indicator_donor_recipient_funding_growth()`](indicator_donor_recipient_funding_growth.md)
+  : Donor-Recipient Funding Growth Trend
+- [`indicator_donor_recipient_reciprocity()`](indicator_donor_recipient_reciprocity.md)
+  : Donor→Recipient: Reciprocity Ratio
+- [`indicator_donor_recipient_relationship_duration()`](indicator_donor_recipient_relationship_duration.md)
+  : Donor-Recipient Relationship Duration Index
+- [`indicator_donor_recipient_stability()`](indicator_donor_recipient_stability.md)
+  : Donor→Recipient: Relationship Stability Index
+- [`indicator_donor_recipient_trend()`](indicator_donor_recipient_trend.md)
+  : Donor→Recipient: Funding Trend Index
+- [`indicator_donor_relationship_duration()`](indicator_donor_relationship_duration.md)
+  : Relationship Duration Index
+- [`indicator_donor_sector_alignment()`](indicator_donor_sector_alignment.md)
+  : Sector Alignment
+- [`indicator_donor_systemic_concentration()`](indicator_donor_systemic_concentration.md)
+  : Donor Systemic: Concentration Index
+- [`indicator_donor_timing_consistency()`](indicator_donor_timing_consistency.md)
+  : Donor Timing Consistency Index
+- [`indicator_recipient_amount_stability()`](indicator_recipient_amount_stability.md)
+  : Amount Stability
+- [`indicator_recipient_cofunding_rate()`](indicator_recipient_cofunding_rate.md)
+  : Co-Funding Rate
+- [`indicator_recipient_funding_share()`](indicator_recipient_funding_share.md)
+  : Funding Volume Share
+- [`indicator_recipient_systemic_diversification()`](indicator_recipient_systemic_diversification.md)
+  : Recipient Systemic: Diversification Index
+- [`plot_donor_cluster_coverage()`](plot_donor_cluster_coverage.md) :
+  Plot Donor Cluster Coverage
+- [`plot_donor_earmarking()`](plot_donor_earmarking.md) : Plot Donor
+  Funding by Earmarking Type
+- [`plot_donor_flowtype()`](plot_donor_flowtype.md) : Plot Donor Flow
+  Type Distribution
+- [`plot_donor_funding_over_time()`](plot_donor_funding_over_time.md) :
+  Plot Donor Funding Over Time
+- [`plot_funding_status_timeline()`](plot_funding_status_timeline.md) :
+  Plot Funding Timeline by Status
+- [`plot_location_funding_destination()`](plot_location_funding_destination.md)
+  : Plot Funding by Destination Location
+- [`plot_location_funding_donor()`](plot_location_funding_donor.md) :
+  Plot Destination Funding by Donor
+- [`plot_location_heatmap()`](plot_location_heatmap.md) : Plot Top
+  Donors Heatmap
+- [`plot_recipient_cofunding()`](plot_recipient_cofunding.md) : Plot
+  Recipient Co-Funding Rate
+- [`plot_recipient_contribution_type()`](plot_recipient_contribution_type.md)
+  : Plot Recipient Funding by Contribution Type
+- [`plot_recipient_funding_composition()`](plot_recipient_funding_composition.md)
+  : Plot Recipient Funding Composition by Donor
+- [`plot_recipient_grandbargain()`](plot_recipient_grandbargain.md) :
+  Plot Grand Bargain Earmarking by Recipient
+
+# Articles
+
+### All vignettes
+
+- [1-Data Tidying](1-data-tidying.md):
+- [2-Indicators](2-indicators.md):
+- [5-Visualisation](5-visualisation.md):

@@ -1,0 +1,147 @@
+flat_dev_1_data.Rmd:
+  path: dev/flat_dev_1_data.Rmd
+  state: active
+  R:
+  - R/fetch_fts_data.R
+  - R/filter_flows_for_indicators.R
+  tests:
+  - tests/testthat/test-fetch_fts_data.R
+  - tests/testthat/test-filter_flows_for_indicators.R
+  vignettes: vignettes/1-data-tidying.Rmd
+  inflate:
+    flat_file: dev/flat_dev_1_data.Rmd
+    vignette_name: 1-Data Tidying
+    open_vignette: true
+    check: true
+    document: true
+    overwrite: ask
+    clean: ask
+    codecov: false
+flat_dev_2_indicator.Rmd:
+  path: dev/flat_dev_2_indicator.Rmd
+  state: active
+  R:
+  - R/indicator_cross_donor_systemic_destination_alignment.R
+  - R/indicator_destination_dependency.R
+  - R/indicator_destination_donor_diversity.R
+  - R/indicator_destination_donor_retention.R
+  - R/indicator_destination_earmarking_flexibility.R
+  - R/indicator_destination_funding_diversity.R
+  - R/indicator_destination_funding_stability.R
+  - R/indicator_destination_funding_trend.R
+  - R/indicator_destination_funding_volatility.R
+  - R/indicator_destination_modality_balance.R
+  - R/indicator_destination_modality_innovation.R
+  - R/indicator_destination_pipeline_visibility.R
+  - R/indicator_donor_destination_concentration.R
+  - R/indicator_donor_destination_coverage.R
+  - R/indicator_donor_destination_earmarking_flexibility.R
+  - R/indicator_donor_destination_risk_tolerance.R
+  - R/indicator_donor_destination_stability.R
+  - R/indicator_donor_destination_trend.R
+  - R/indicator_donor_funding_consistency.R
+  - R/indicator_donor_funding_growth.R
+  - R/indicator_donor_geographic_alignment.R
+  - R/indicator_donor_knowledge_sharing_intensity.R
+  - R/indicator_donor_recipient_concentration.R
+  - R/indicator_donor_recipient_funding_growth.R
+  - R/indicator_donor_recipient_reciprocity.R
+  - R/indicator_donor_recipient_relationship_duration.R
+  - R/indicator_donor_recipient_stability.R
+  - R/indicator_donor_recipient_trend.R
+  - R/indicator_donor_relationship_duration.R
+  - R/indicator_donor_sector_alignment.R
+  - R/indicator_donor_systemic_concentration.R
+  - R/indicator_donor_timing_consistency.R
+  - R/indicator_recipient_amount_stability.R
+  - R/indicator_recipient_cofunding_rate.R
+  - R/indicator_recipient_funding_share.R
+  - R/indicator_recipient_systemic_diversification.R
+  tests:
+  - tests/testthat/test-indicator_donor_funding_consistency.R
+  - tests/testthat/test-indicator_donor_relationship_duration.R
+  - tests/testthat/test-indicator_donor_funding_growth.R
+  - tests/testthat/test-indicator_donor_timing_consistency.R
+  - tests/testthat/test-indicator_donor_systemic_concentration.R
+  - tests/testthat/test-indicator_donor_knowledge_sharing_intensity.R
+  - tests/testthat/test-indicator_donor_sector_alignment.R
+  - tests/testthat/test-indicator_donor_geographic_alignment.R
+  - tests/testthat/test-indicator_cross_donor_systemic_destination_alignment.R
+  - tests/testthat/test-indicator_donor_recipient_relationship_duration.R
+  - tests/testthat/test-indicator_donor_recipient_funding_growth.R
+  - tests/testthat/test-indicator_donor_recipient_stability.R
+  - tests/testthat/test-indicator_donor_recipient_concentration.R
+  - tests/testthat/test-indicator_donor_recipient_trend.R
+  - tests/testthat/test-indicator_donor_recipient_reciprocity.R
+  - tests/testthat/test-indicator_donor_destination_coverage.R
+  - tests/testthat/test-indicator_donor_destination_trend.R
+  - tests/testthat/test-indicator_donor_destination_concentration.R
+  - tests/testthat/test-indicator_donor_destination_earmarking_flexibility.R
+  - tests/testthat/test-indicator_donor_destination_risk_tolerance.R
+  - tests/testthat/test-indicator_donor_destination_stability.R
+  - tests/testthat/test-indicator_recipient_funding_share.R
+  - tests/testthat/test-indicator_recipient_amount_stability.R
+  - tests/testthat/test-indicator_recipient_cofunding_rate.R
+  - tests/testthat/test-indicator_recipient_systemic_diversification.R
+  - tests/testthat/test-indicator_destination_modality_innovation.R
+  - tests/testthat/test-indicator_destination_pipeline_visibility.R
+  - tests/testthat/test-indicator_destination_earmarking_flexibility.R
+  - tests/testthat/test-indicator_destination_donor_diversity.R
+  - tests/testthat/test-indicator_destination_funding_stability.R
+  - tests/testthat/test-indicator_destination_funding_trend.R
+  - tests/testthat/test-indicator_destination_donor_retention.R
+  - tests/testthat/test-indicator_destination_funding_diversity.R
+  - tests/testthat/test-indicator_destination_funding_volatility.R
+  - tests/testthat/test-indicator_destination_dependency.R
+  - tests/testthat/test-indicator_destination_modality_balance.R
+  vignettes: vignettes/2-indicators.Rmd
+  inflate:
+    flat_file: dev/flat_dev_2_indicator.Rmd
+    vignette_name: 2-Indicators
+    open_vignette: true
+    check: true
+    document: true
+    overwrite: ask
+    clean: ask
+    codecov: false
+flat_dev_5_visualisation2.Rmd:
+  path: dev/flat_dev_5_visualisation2.Rmd
+  state: active
+  R:
+  - R/generate_plot_story.R
+  - R/plot_donor_cluster_coverage.R
+  - R/plot_donor_earmarking.R
+  - R/plot_donor_flowtype.R
+  - R/plot_donor_funding_over_time.R
+  - R/plot_funding_status_timeline.R
+  - R/plot_location_funding_destination.R
+  - R/plot_location_funding_donor.R
+  - R/plot_location_heatmap.R
+  - R/plot_recipient_cofunding.R
+  - R/plot_recipient_contribution_type.R
+  - R/plot_recipient_funding_composition.R
+  - R/plot_recipient_grandbargain.R
+  tests:
+  - tests/testthat/test-generate_plot_story.R
+  - tests/testthat/test-plot_donor_funding_over_time.R
+  - tests/testthat/test-plot_donor_earmarking.R
+  - tests/testthat/test-plot_donor_flowtype.R
+  - tests/testthat/test-plot_donor_cluster_coverage.R
+  - tests/testthat/test-plot_recipient_funding_composition.R
+  - tests/testthat/test-plot_recipient_grandbargain.R
+  - tests/testthat/test-plot_recipient_cofunding.R
+  - tests/testthat/test-plot_recipient_contribution_type.R
+  - tests/testthat/test-plot_location_funding_destination.R
+  - tests/testthat/test-plot_location_funding_donor.R
+  - tests/testthat/test-plot_location_heatmap.R
+  - tests/testthat/test-plot_funding_status_timeline.R
+  vignettes: vignettes/5-visualisation.Rmd
+  inflate:
+    flat_file: dev/flat_dev_5_visualisation2.Rmd
+    vignette_name: 5-Visualisation
+    open_vignette: true
+    check: true
+    document: true
+    overwrite: ask
+    clean: ask
+    codecov: false

@@ -1,0 +1,3718 @@
+---
+title: "Indicators Documentation"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- Run this 'development' chunk -->
+<!-- Store every call to library() that you need to explore your functions -->
+
+```{r development, include=FALSE}
+library(testthat)
+```
+
+<!--
+ You need to run the 'description' chunk in the '0-dev_history.Rmd' file before continuing your code there.
+
+If it is the first time you use {fusen}, after 'description', you can directly run the last chunk of the present file with inflate() inside.
+--> 
+
+```{r development-load}
+# Load already included functions if relevant
+pkgload::load_all(export_all = FALSE)
+```
+
+
+Using this flows data to compile different types of indicators
+
+ * Donor Focused Indicators prefixed 
+ * Donor to Recipient Indicators
+ * Donors to Destination Indicators
+ * Recipient Focused indicators
+ * Destination Focused indicators
+
+# Donor
+
+## indicator_donor_funding_consistency
+    
+  
+```{r function-indicator_donor_funding_consistency}
+#' Funding Consistency Index
+#'
+#' Calculates the proportion of years in which a donor provided funding 
+#' relative to the total number of years analyzed.
+#'
+#' @param flows A dataframe containing FTS-style flow data with `sourceObjects`,
+#'  `budgetYear`, and `amountUSD`.
+#' @param donors Optional dataframe with donor names to merge results.
+#'
+#' @return A tibble with columns `donor` and `Funding_Consistency_Index`.
+#' @importFrom dplyr select group_by summarise mutate n_distinct left_join rename
+#' @importFrom purrr map_dfr
+#' @importFrom tidyr unnest_wider unnest
+#' @export
+indicator_donor_funding_consistency <- function(flows, donors = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects) |>
+    dplyr::filter(type == "Organization") |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(
+      n_years_funded = dplyr::n_distinct(budgetYear[amountUSD > 0], na.rm = TRUE),
+      total_years = dplyr::n_distinct(budgetYear, na.rm = TRUE),
+      Funding_Consistency_Index = ifelse(total_years > 0, 
+                                         n_years_funded / total_years, NA_real_)
+    ) |>
+    dplyr::rename(donor = name)
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_funding_consistency}
+donors <- indicator_donor_funding_consistency(flows)
+table(donors$Funding_Consistency_Index)
+# library(ggplot2)
+# ggplot(donors, aes(x = Funding_Consistency_Index)) +
+#   geom_histogram(fill = "steelblue", color = "white") +
+#   unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+#   labs(
+#     title = "Distribution of Donor Funding Consistency Index",
+#     x = "",
+#     y = "Number of Donors",
+#     caption = paste(
+#     "Indicator interpretation:",
+#     "Measures the proportion of years a donor provided funding relative to total 
+#     years analyzed. Scores range 0-1 where 1 = consistent annual funding.",
+#     "\n\n",
+#     
+#     "How to read the visualization:",
+#     "X-axis shows consistency index values (0-1), Y-axis shows count of donors.
+#     Bars represent frequency of donors at each consistency level.", "\n\n",
+#     
+#     "Humanitarian relevance:",
+#     "Identifies reliable long-term partners vs sporadic funders, helping 
+#     prioritize relationship building with consistent donors.", "\n\n",
+#     
+#     "Source: Financial Tracking Service (FTS) API."
+#   )
+#   )
+```
+  
+```{r tests-indicator_donor_funding_consistency}
+test_that("indicator_donor_funding_consistency works", {
+  expect_true(inherits(indicator_donor_funding_consistency, "function")) 
+})
+```
+    
+## indicator_donor_relationship_duration
+    
+  
+```{r function-indicator_donor_relationship_duration}
+#' Relationship Duration Index
+#'
+#' Measures the duration of a donor’s funding relationship relative to the 
+#' maximum possible duration.
+#'
+#' @param flows A dataframe containing `sourceObjects` and `budgetYear`.
+#' @param donors Optional dataframe with donor names.
+#'
+#' @return A tibble with `donor` and `Relationship_Duration_Index`.
+#' @importFrom dplyr  group_by summarise mutate left_join rename
+#' @importFrom tidyr unnest
+#' @export
+indicator_donor_relationship_duration <- function(flows, donors = NULL) {
+   
+  flows <- filter_flows_for_indicators(flows)
+  
+  # Global range across entire dataset
+  global_min_year <- min(flows$budgetYear, na.rm = TRUE)
+  global_max_year <- max(flows$budgetYear, na.rm = TRUE)
+  global_range <- global_max_year - global_min_year
+  
+  donors_df <- flows |>
+    dplyr::filter(boundary == "incoming") |> 
+    dplyr::select(sourceObjects, budgetYear) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique") |>
+    
+    # FIX: after unnesting, names are simply name, type
+    dplyr::filter(type == "Organization") |>
+    dplyr::rename(donor = name) |>
+    
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      first_year = min(budgetYear, na.rm = TRUE),
+      last_year  = max(budgetYear, na.rm = TRUE),
+      Relationship_Duration_Index = dplyr::case_when(
+        is.na(first_year) | is.na(last_year) ~ NA_real_,
+        global_range == 0 ~ NA_real_,
+        TRUE ~ (last_year - first_year) / global_range
+      ),
+      .groups = "drop"
+    )
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_relationship_duration}
+donors <- indicator_donor_relationship_duration(flows)
+#table(donor$Relationship_Duration_Index)
+library(ggplot2)
+ggplot(donors, aes(x = Relationship_Duration_Index)) +
+  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Relationship Duration Index",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Measures duration of donor's funding relationship relative to maximum 
+    possible duration. 1 = active since earliest data, 0 = new entrant.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows distribution of duration scores. Left-skewed distribution 
+    indicates many new donors, right-skewed indicates established 
+    relationships.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Long-term donors often have deeper contextual understanding and more 
+    predictable funding patterns for strategic planning.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_relationship_duration}
+test_that("indicator_donor_relationship_duration works", {
+  expect_true(inherits(indicator_donor_relationship_duration, "function")) 
+})
+```
+    
+
+## indicator_donor_funding_growth
+    
+```{r function-indicator_donor_funding_growth}
+#' Funding Growth Trend
+#'
+#' Calculates the linear trend (slope) of annual funding amounts over years for
+#'  each donor.
+#'
+#' @param flows A dataframe with `sourceObjects`, `budgetYear`, and `amountUSD`.
+#' @param donors Optional dataframe with donor names.
+#'
+#' @return A tibble with `donor` and `Funding_Growth_Trend` (slope of funding 
+#' over years).
+#' @importFrom dplyr  group_by summarise mutate left_join
+#' @importFrom tidyr unnest
+#' @importFrom stats lm coef
+#' @export
+indicator_donor_funding_growth <- function(flows, donors = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects) |>
+    dplyr::filter(type == "Organization") |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(
+      Funding_Growth_Trend = tryCatch({
+        fit <- stats::lm(amountUSD ~ budgetYear)
+        stats::coef(fit)[["budgetYear"]]
+      }, error = function(e) NA_real_)
+    ) |>
+    dplyr::rename(donor = name)
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_funding_growth}
+donors <- indicator_donor_funding_growth(flows)
+#table(donors$Funding_Growth_Trend)
+library(ggplot2)
+ggplot(donors, aes(x = Funding_Growth_Trend)) +
+  geom_histogram( fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Funding Growth Trend",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Linear regression slope of annual funding amounts over time. Positive 
+    values = increasing funding, negative = decreasing funding.", "\n\n",
+    
+    "How to read the visualization:",
+    "X-axis shows growth rate (USD per year), Y-axis shows donor count. Center 
+    around zero indicates stable funding, right tail indicates growing donors.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies expanding vs contracting funding sources, helping target 
+    advocacy and partnership efforts with growing donors.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_funding_growth}
+test_that("indicator_donor_funding_growth works", {
+  expect_true(inherits(indicator_donor_funding_growth, "function")) 
+})
+```
+  
+  
+## indicator_donor_timing_consistency
+
+  
+```{r function-indicator_donor_timing_consistency}
+#' Donor Timing Consistency Index
+#'
+#' This indicator measures how consistently a donor provides funding across
+#' the months of the year, based on the transaction-level `date` field of
+#' FTS flows. It evaluates the dispersion of monthly funding shares and scales
+#' the result to a 0–1 index where higher values represent more regular and
+#' predictable timing of contributions.
+#'
+#' @param flows A dataframe containing `sourceObjects`, `budgetMonth` (1–12),
+#'  and `amountUSD`.
+#' @param donors Optional dataframe with donor names.
+#'
+#' @return A tibble with `donor` and `Timing_Consistency` 
+#'          (1 = very consistent, 0 = erratic).
+#' @importFrom dplyr filter group_by summarise mutate rename
+#' @importFrom  lubridate month
+#' @importFrom tidyr unnest
+#' @export
+indicator_donor_timing_consistency <- function(flows, donors = NULL) {
+  flows <- filter_flows_for_indicators(flows)
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, date, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique") |>
+    dplyr::filter(type == "Organization") |>
+    dplyr::rename(donor = name) |>
+    dplyr::mutate(
+      date = suppressWarnings(lubridate::ymd_hms(date)),
+      month = lubridate::month(date)
+    ) |>
+    dplyr::filter(!is.na(month)) |>
+    dplyr::group_by(donor, month) |>
+    dplyr::summarise(
+      monthly_total = sum(amountUSD, na.rm = TRUE),
+      .groups = "drop_last"
+    ) |>
+    dplyr::mutate(
+      share = monthly_total / sum(monthly_total, na.rm = TRUE)
+    ) |>
+    dplyr::summarise(
+      sd_share = sd(share, na.rm = TRUE),
+      Timing_Consistency = 1 - sd_share / 0.3,
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Timing_Consistency = pmax(pmin(Timing_Consistency, 1), 0)
+    )
+
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df )
+}
+```
+  
+```{r example-indicator_donor_timing_consistency}
+donors <- indicator_donor_timing_consistency(flows)
+#table(donors$Timing_Consistency)
+library(ggplot2)
+ggplot(donors, aes(x = Timing_Consistency)) +
+  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Timing Consistency",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Measures regularity of funding distribution across month
+    (1 = evenly spread, 0 = highly seasonal/erratic). Based on monthly 
+    funding share dispersion.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows consistency scores. Higher values indicate predictable
+    monthly funding patterns, lower values indicate lumpy or seasonal
+    disbursements.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Predictable timing enables better cash flow management and program
+    continuity, reducing operational disruptions in emergency responses.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_timing_consistency}
+test_that("indicator_donor_timing_consistency works", {
+  expect_true(inherits(indicator_donor_timing_consistency, "function")) 
+})
+```
+    
+## indicator_donor_systemic_concentration
+
+  
+```{r function-indicator_donor_systemic_concentration}
+#' Donor Systemic: Concentration Index
+#'
+#' Calculates the Herfindahl–Hirschman concentration index (HHI) for each donor,
+#' based on the distribution of funding amounts across recipient organizations.
+#' A higher value means the donor funds fewer recipients more heavily.
+#' 
+#' Goal: Measures how concentrated a donor’s portfolio is across recipients.
+#'
+#' @param flows A dataframe including `sourceObjects`, `destinationObjects`,
+#'  and `amountUSD`.
+#' @param donors (optional) A dataframe with donor names to merge with the
+#'  results.
+#'
+#' @return A tibble with `donor` and `Donor_Concentration_Index` (0–1 scale).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @importFrom tidyr unnest
+#' @export
+indicator_donor_systemic_concentration <- function(flows, donors = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    
+    # Unnest sourceObjects first
+    tidyr::unnest(sourceObjects, names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    
+    # Unnest destinationObjects
+    tidyr::unnest(destinationObjects, names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    
+    # Aggregate per donor–recipient pair
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(
+      total = sum(amountUSD, na.rm = TRUE),
+      .groups = "drop_last"
+    ) |>
+    
+    # Compute shares
+    dplyr::mutate(
+      share = total / sum(total, na.rm = TRUE)
+    ) |>
+    
+    # Compute HHI concentration index
+    dplyr::summarise(
+      Donor_Concentration_Index = sum(share^2, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    
+    # Clamp to 0–1
+    dplyr::mutate(
+      Donor_Concentration_Index = pmin(Donor_Concentration_Index, 1)
+    )
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_systemic_concentration}
+donors <- indicator_donor_systemic_concentration(flows)
+
+#table(donors$Donor_Concentration_Index)
+
+library(ggplot2)
+ggplot(donors, aes(x = Donor_Concentration_Index)) +
+  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Concentration Index",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Herfindahl-Hirschman Index measuring portfolio concentration across 
+    recipients (0 = highly diversified, 1 = focused on few recipients).",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "X-axis shows concentration level. Left side indicates donors spreading
+    funds widely, right side indicates focused funding on few partners.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Helps identify donors with broad partner networks vs specialized 
+    relationships, informing partnership and resource mobilization strategies.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_systemic_concentration}
+test_that("indicator_donor_systemic_concentration works", {
+  expect_true(inherits(indicator_donor_systemic_concentration, "function")) 
+})
+```
+      
+## indicator_donor_knowledge_sharing_intensity
+
+```{r function-indicator_donor_knowledge_sharing_intensity}
+#' Knowledge Sharing Intensity
+#'
+#' Measures the proportion of flows mentioning collaboration, learning, or
+#' assessment activities in the description.
+#'
+#' Goal: Quantifies the degree to which a donor’s funding supports knowledge
+#' sharing, joint assessments, learning events, or coordination activities.
+#'
+#' @param flows A dataframe containing at least `description` and 
+#'              nested `sourceObjects`.
+#' @param donors (optional) A dataframe with donor names to merge with the
+#'  results.
+#'
+#' @return A tibble with columns:
+#' \describe{
+#'   \item{donor}{Donor organization name.}
+#'   \item{Knowledge_Sharing_Intensity}{Proportion of flows mentioning
+#'         collaboration/learning/assessment (0–1).}
+#' }
+#'
+#' @importFrom dplyr select filter group_by summarise mutate rename
+#' @importFrom tidyr unnest
+#' @importFrom stringr str_detect str_to_lower regex
+#' @export
+indicator_donor_knowledge_sharing_intensity <- function(flows, donors = NULL) {
+  
+  keywords <- "(joint|assessment|learning|coordination|evaluation|review|workshop|knowledge)"
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, description) |>
+    tidyr::unnest(sourceObjects, names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::mutate(
+      text = stringr::str_to_lower(description),
+      mention = stringr::str_detect(text, stringr::regex(keywords))
+    ) |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      Knowledge_Sharing_Intensity = mean(mention, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_knowledge_sharing_intensity}
+donors <- indicator_donor_knowledge_sharing_intensity(flows)
+#table(donors$Knowledge_Sharing_Intensity)
+
+library(ggplot2)
+# Basic histogram of Knowledge Sharing Intensity
+ggplot(donors, aes(x = Knowledge_Sharing_Intensity)) +
+  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Knowledge Sharing Intensity",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of flows mentioning collaboration, learning, or assessment
+    activities in descriptions (0 = no mention, 1 = all flows include 
+    knowledge components).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows distribution of knowledge sharing emphasis. Higher values 
+    indicate donors prioritizing learning and coordination in funding.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies donors supporting system-wide learning and coordination, 
+    crucial for improving response effectiveness and accountability.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+
+```
+  
+```{r tests-indicator_donor_knowledge_sharing_intensity}
+test_that("indicator_donor_knowledge_sharing_intensity works", {
+  expect_true(inherits(indicator_donor_knowledge_sharing_intensity, "function")) 
+})
+```
+   
+   
+  
+## indicator_donor_sector_alignment
+     
+  
+```{r function-indicator_donor_sector_alignment}
+#' Sector Alignment
+#'
+#' Calculates a weighted sector alignment index between donors and recipients,
+#' comparing donor funding per sector to internal capacity weights.
+#' 
+#' Goal: evaluates how closely a donor’s funding distribution across humanitarian
+#'  sectors matches the internal capacity or priority weighting of those sectors
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#' `amountUSD`.
+#' @param sector_capacity A tibble with columns `sector` and 
+#' `capacity_weight` (values 0–1).
+#' @param donors (optional) A dataframe with donor names to merge with the
+#'  results.
+#'
+#' @return A tibble with columns `donor`, `recipient`, and `Sector_Alignment`.
+#' @importFrom dplyr filter select group_by summarise left_join mutate rename
+#' @export
+indicator_donor_sector_alignment <- function(flows, sector_capacity, donors = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  # flows |>
+  #    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+  #    dplyr::pull(destinationObjects_type) |>
+  #    unlist() |>
+  #    unique() 
+  # 
+  # flows |>
+  #    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+  #    dplyr::filter(destinationObjects_type == "GlobalCluster") |>
+  #    dplyr::pull(destinationObjects_name) |>
+  #    unlist() |>
+  #    unique()
+   
+   
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "GlobalCluster") |>
+    dplyr::rename(sector = destinationObjects_name) |>
+    dplyr::group_by(donor, sector) |>
+    dplyr::summarise(donor_sector_funding = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop") |>
+    dplyr::left_join(sector_capacity, by = c("sector")) |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(Sector_Alignment = sum(capacity_weight * donor_sector_funding,
+                                            na.rm = TRUE) / 
+                sum(donor_sector_funding, na.rm = TRUE))
+
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_sector_alignment}
+
+flows |>
+      tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+      dplyr::filter(destinationObjects_type == "GlobalCluster") |>
+      dplyr::pull(destinationObjects_name) |>
+      unlist() |>
+      unique()
+
+# pragmatic default weights - illustrative defaults emphasizing life-saving sectors 
+# (Nutrition, Health, WASH, Food Security) and cash/multi-sector where relevant.
+library(tibble)
+
+sectors <- c(
+ "Nutrition", 
+ "Health", 
+ "Emergency Shelter and NFI", 
+ "Water Sanitation Hygiene",
+ "Food Security",
+ "Logistics", 
+ "Protection - Gender-Based Violence", 
+ "Protection - Child Protection",
+ "Protection",
+ "Multipurpose Cash", 
+ "Education",
+ "Multi-sector",
+ "Protection - Housing, Land and Property",
+ "Protection - Human Trafficking & Smuggling", 
+ "Coordination and support services",
+ "Camp Coordination / Management",
+ "Emergency Telecommunications", 
+ "Agriculture",
+ "Early Recovery",
+ "Protection - Mine Action", 
+ "Other"
+)
+
+# Adjusted scores based on funding collapse and operational risk
+
+adjusted_scores <- c(
+  10,  # Nutrition: Life-saving and first-line response; malnutrition spikes in
+  #crises. Funding collapse means ration cuts, so priority remains highest.
+  9,   # Health: Essential for survival; clinics reverting to 1990s models 
+  #(minimal staff, basic meds). High priority to prevent mortality.
+  8,   # Emergency Shelter and NFI: Critical for displaced populations;
+  #exposure risk rises with underfunding. Still high but slightly below health/nutrition.
+  8,   # Water Sanitation Hygiene (WASH): Prevents disease outbreaks; 
+  #cholera risk escalates when systems fail. Needs strong prioritization.
+  7,   # Food Security: Linked to nutrition but broader (agriculture, livelihoods).
+  #Funding gaps mean rationing; still vital but slightly less than direct nutrition.
+  6,   # Logistics: Backbone for all sectors; underfunding reduces supply chain 
+  #resilience. Important but not life-saving on its own.
+  7,   # Protection - Gender-Based Violence: GBV spikes in fragile contexts; 
+  #services often first to be cut. Needs strong prioritization for dignity and safety.
+  6,   # Protection - Child Protection: Critical for safeguarding vulnerable
+  #children; funding collapse risks exploitation. Medium-high priority.
+  5,   # Protection (general): Important for rights and safety but less 
+  #immediately life-saving than GBV or child protection.
+  9,   # Multipurpose Cash: Severely underfunded (only ~20% coverage);
+  #key for dignity and flexibility. High priority to maintain household resilience.
+  8,   # Education: Collapsing (21% funded); long-term impact on recovery 
+  #and protection. Elevated priority despite being non-life-saving.
+  6,   # Multi-sector: Coordination across sectors matters, but direct impact 
+  # is less urgent than core life-saving interventions.
+  4,   # Protection - Housing, Land and Property: Important for durable
+  #solutions, but less urgent during acute collapse.
+  4,   # Protection - Human Trafficking & Smuggling: Serious risk but narrower
+  #scope; medium-low priority compared to GBV/child protection.
+  3,   # Coordination and support services: Necessary for system functioning,
+  # but deprioritized when survival sectors collapse.
+  3,   # Camp Coordination / Management: Important for organized response,
+  #but less critical than food, health, WASH.
+  3,   # Emergency Telecommunications: Enables operations but not directly
+  #life-saving; deprioritized under severe funding constraints.
+  5,   # Agriculture: Supports food security and recovery; medium priority 
+  #as immediate needs dominate.
+  8,   # Early Recovery: Only 17% funded; crucial for resilience and 
+  #preventing protracted crises. Elevated priority despite systemic collapse.
+  2,   # Protection - Mine Action: Important for safety but less urgent 
+  # than health/nutrition during acute funding collapse.
+  1    # Other: Catch-all category; lowest priority given resource scarcity.
+)
+
+
+
+sector_capacity <- tibble::tibble(
+  sector = sectors,
+  raw_score = adjusted_scores) |>
+  dplyr::mutate(
+    capacity_weight = raw_score / sum(raw_score)  # normalize to sum to 1
+  ) |>
+  dplyr::select(sector, capacity_weight)
+
+knitr::kable(sector_capacity |> dplyr::arrange(desc(capacity_weight)))
+
+donors <- indicator_donor_sector_alignment(flows, sector_capacity)
+
+#table(donor$Sector_Alignment )
+
+library(ggplot2)
+ggplot(donors, aes(x =Sector_Alignment )) +
+  geom_histogram(binwidth = 0.05, fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Sector Alignment",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Weighted alignment between donor funding distribution and internal sector
+    capacity priorities (0 = misaligned, 1 = perfectly aligned with 
+    capacity weights).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows alignment scores. Higher values indicate donors funding 
+    sectors matching organizational capacities and strategic priorities.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Helps identify donors whose funding priorities match operational strengths,
+    enabling more effective resource allocation and partnership building.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+
+```
+  
+```{r tests-indicator_donor_sector_alignment}
+test_that("indicator_donor_sector_alignment works", {
+  expect_true(inherits(indicator_donor_sector_alignment, "function")) 
+})
+```
+    
+## indicator_donor_geographic_alignment
+
+  
+```{r function-indicator_donor_geographic_alignment}
+#' Geographic Alignment
+#'
+#' Calculates the Jaccard similarity between donor-funded locations and reference
+#'  locations.
+#'
+#' @param flows A dataframe containing `sourceObjects`, `destinationObjects`.
+#' @param priority_destinations Character vector of priority locations.
+#' @param donors (optional) A dataframe with donor names to merge with the
+#'  results.
+#'
+#' @return A tibble with columns `donor` and `Geographic_Alignment`.
+#' @importFrom dplyr filter group_by summarise mutate
+#' @export
+indicator_donor_geographic_alignment <- function(flows,
+                                                 priority_destinations,
+                                                 donors = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  donors_df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location") |>
+    dplyr::rename(location = destinationObjects_name) |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      donor_locs = list(unique(location))
+    ) |>
+    dplyr::mutate(
+      Geographic_Alignment = purrr::map_dbl(donor_locs, ~{
+        inter <- length(intersect(.x, priority_destinations))
+        unionn <- length(union(.x, priority_destinations))
+        ifelse(unionn > 0, inter / unionn, NA_real_)
+      })
+    ) |>
+    dplyr::select(donor, Geographic_Alignment)
+  
+  
+  if (!is.null(donors)) {
+    donors_df <- donors |> dplyr::left_join(donors_df, by = "donor")
+  }
+  
+  return(donors_df)
+}
+```
+  
+```{r example-indicator_donor_geographic_alignment}
+
+destinations <- flows |>
+      tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+      dplyr::filter(destinationObjects_type == "Location") |>
+      dplyr::pull(destinationObjects_name) |>
+      unlist() |>
+      unique()
+#dput(destinations)
+
+# High-visibility, acute crises get funded
+high_visibility <- c(
+  "Ukraine", "Syrian Arab Republic", "Occupied Palestinian Territory",
+  "Sudan", "South Sudan", "Yemen", "Afghanistan", "Myanmar",
+  "Ethiopia", "Somalia", "Democratic Republic of the Congo",
+  "Central African Republic", "Haiti"
+)
+
+# Long-standing crises with major donor attention maintain coverage
+long_standing <- c(
+  "Lebanon", "Jordan", "Iraq", "Türkiye", "Bangladesh", "Chad",
+  "Cameroon", "Niger", "Burkina Faso", "Mali", "Nigeria",
+  "Colombia", "Venezuela, Bolivarian Republic of"
+)
+
+# Regional refugee responses collapse
+regional_refugee <- c(
+  "Region - Southern and Eastern Africa", "Region - Middle East and Northern Africa",
+  "Region - West and Central Africa", "Region - Latin America and the Caribbean",
+  "Region - Asia and the Pacific", "Uganda", "Kenya", "Tanzania, United Republic of",
+  "Djibouti", "Mauritania", "Cameroon", "Moldova, Republic of"
+)
+
+# Lower-profile crises get abandoned
+lower_profile <- c(
+  "Burundi", "Rwanda", "Eritrea", "Nepal", "Georgia", "Cuba",
+  "Dominican Republic", "Madagascar", "Mozambique", "Angola", "Malawi",
+  "Comoros", "Liberia", "Côte d'Ivoire", "Senegal", "Ghana", "Guinea",
+  "Guinea-Bissau", "Lesotho", "Eswatini", "Zambia", "Cambodia",
+  "Lao People's Democratic Republic", "Philippines", "Timor-Leste",
+  "Sri Lanka", "Togo", "Benin", "Gambia", "Nicaragua", "Honduras",
+  "El Salvador", "Guatemala", "Costa Rica", "Peru", "Ecuador", "Panama",
+  "Bolivia, Plurinational State of", "Papua New Guinea", "Solomon Islands",
+  "Kiribati", "Vanuatu", "Micronesia, Federated States of", "Tonga",
+  "Fiji", "Cook Islands", "Tuvalu", "Samoa", "Nauru", "Niue", "Palau",
+  "Maldives", "Armenia", "Uzbekistan", "Kazakhstan", "Turkmenistan",
+  "Azerbaijan", "Tajikistan", "Kyrgyzstan", "Mongolia", "Mauritius",
+  "Cape Verde", "Equatorial Guinea", "Gabon", "Botswana", "Namibia",
+  "Seychelles", "Trinidad and Tobago", "Grenada", "Saint Lucia",
+  "Saint Vincent and the Grenadines", "Barbados", "Guyana", "Suriname",
+  "Belize", "Anguilla (United Kingdom)", "Aruba (Netherlands)",
+  "Curaçao (Netherlands)"
+)
+
+
+donor <- indicator_donor_geographic_alignment(flows, 
+                       priority_destinations = high_visibility)
+#table(donor$Geographic_Alignment)
+
+library(ggplot2)
+ggplot(donor, aes(x = Geographic_Alignment)) +
+  geom_histogram( fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Geographic Alignment to High Visibility Location",
+    x = "",
+    y = "Number of Destination",
+   caption = paste(
+    "Indicator interpretation:",
+    "Jaccard similarity between donor-funded locations and priority 
+    locations (0 = no overlap, 1 = identical geographic focus).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows alignment with specified priority locations. Higher 
+    values indicate donors active in organizational priority countries.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies natural partners for priority crises and reveals funding gaps 
+    in key locations needing advocacy attention.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_geographic_alignment}
+test_that("indicator_donor_geographic_alignment works", {
+  expect_true(inherits(indicator_donor_geographic_alignment, "function")) 
+})
+```
+  
+
+## indicator_cross_donor_systemic_destination_alignment
+ 
+```{r function-indicator_cross_donor_systemic_destination_alignment}
+#' Donors Systemic: Destination Alignment (Optimized)
+#'
+#' Calculates pairwise Jaccard similarity between donors based on their funded
+#' destinations (locations or clusters). This indicates overlap or convergence
+#' in geographic or thematic focus.
+#'
+#' Goal: Measures how many destinations are common between donors relative to
+#' their total unique destinations, producing a 0–1 index.
+#'
+#' @details
+#' The function works as follows:
+#' \enumerate{
+#'   \item Filters flows using `filter_flows_for_indicators()` to remove flows
+#'         that should not be included (e.g., parked parents, pass-throughs,
+#'         out-of-boundary flows).
+#'   \item Unnests `sourceObjects` and `destinationObjects`, keeping only
+#'         donors and valid destination types 
+#'         (`Cluster`, `GlobalCluster`, `Location`).
+#'   \item Creates a list of destinations for each donor.
+#'   \item Computes Jaccard similarity between all unique donor pairs using
+#'         precomputed lists, avoiding repeated filtering.
+#'   \item Returns a tibble with `donor1`, `donor2`, and `Destination_Alignment`.
+#' }
+#'
+#' @param flows A dataframe including at least `sourceObjects` and
+#'        `destinationObjects` as nested data frames.
+#'
+#' @return A tibble with columns:
+#' \describe{
+#'   \item{donor1}{First donor in the pair.}
+#'   \item{donor2}{Second donor in the pair.}
+#'   \item{Destination_Alignment}{Jaccard similarity (0–1) of destinations.}
+#' }
+#'
+#' @importFrom dplyr select filter rename group_by summarise distinct bind_rows
+#' @importFrom tidyr unnest
+#' @importFrom purrr map_dfr
+#' @export
+indicator_cross_donor_systemic_destination_alignment <- function(flows) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  # Unnest and filter donors + destinations
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects) |>
+    tidyr::unnest(sourceObjects, names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c( "Location")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::distinct(donor, destination)
+  
+  # Create list of destinations per donor
+  donor_dest <- df |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(dest_list = list(destination), .groups = "drop")
+  
+  donors <- donor_dest$donor
+  
+  # Compute Jaccard similarity using precomputed lists
+  res <- combn(donors, 2, simplify = FALSE) |>
+    purrr::map_dfr(function(pair) {
+      d1 <- donor_dest$dest_list[[which(donor_dest$donor == pair[1])]]
+      d2 <- donor_dest$dest_list[[which(donor_dest$donor == pair[2])]]
+      inter <- length(intersect(d1, d2))
+      union <- length(union(d1, d2))
+      tibble::tibble(
+        donor1 = pair[1],
+        donor2 = pair[2],
+        Destination_Alignment = ifelse(union == 0, NA_real_, inter / union)
+      )
+    })
+  
+  # Mirror the pairs to get full donor×donor table
+  full_res <- dplyr::bind_rows(res, res |> dplyr::rename(donor1 = donor2,
+                                                         donor2 = donor1))
+  
+  # Optionally, diagonal = 1
+  diagonal <- tibble::tibble(donor1 = donors, donor2 = donors, 
+                             Destination_Alignment = 1)
+  
+  final_res <- dplyr::bind_rows(full_res, diagonal)
+  
+  
+  return(final_res)
+}
+```
+  
+```{r example-indicator_cross_donor_systemic_destination_alignment}
+
+# Compute alignment
+alignment <- indicator_cross_donor_systemic_destination_alignment(flows)
+
+# Viz
+library(ggplot2)
+library(dplyr)
+
+
+# Compute total funding per donor
+top_donors <- flows |>
+  tidyr::unnest(sourceObjects, names_sep = "_") |>
+  dplyr::filter(sourceObjects_type == "Organization") |>
+  dplyr::rename(donor = sourceObjects_name) |>
+  dplyr::group_by(donor) |>
+  dplyr::summarise(total_funding = sum(amountUSD, na.rm = TRUE),
+                   .groups = "drop") |>
+  dplyr::arrange(desc(total_funding)) |>
+  dplyr::slice_head(n = 15) |>
+  dplyr::pull(donor)
+
+# Filter alignment to top donors
+alignment_top <- alignment |>
+  dplyr::filter(donor1 %in% top_donors, donor2 %in% top_donors) |>
+    dplyr::mutate(
+      donor1 = stringr::str_wrap(donor1, width = 40),
+      donor2 = stringr::str_wrap(donor2, width = 40)
+    )
+
+# Prepare data for ggplot
+plot_df <- alignment_top |>
+  dplyr::mutate(
+    donor1 = factor(donor1),
+    donor2 = factor(donor2)
+  )
+
+# Heatmap
+ggplot(plot_df, aes(x = donor2, y = donor1, fill = Destination_Alignment)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey80", limits = c(0, 1)) +
+  unhcrthemes::theme_unhcr(grid = FALSE, axis =  FALSE, axis_title = FALSE, legend=TRUE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Top 15 Donors to Destination Alignment",
+    x = "Donor 2",
+    y = "Donor 1",
+    fill = "Jaccard\nSimilarity",
+    caption = paste(
+    "Indicator interpretation:",
+    "Jaccard similarity measuring overlap in funded locations/clusters 
+    between donor pairs (0 = no overlap, 1 = identical destination portfolios).",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Heatmap shows pairwise alignment. Dark colors indicate high 
+    geographic/thematic overlap, light colors indicate complementary coverage.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies donor clusters with similar focus areas, helping coordinate 
+    advocacy and avoid duplication in under-funded crises.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+
+```
+  
+```{r tests-indicator_cross_donor_systemic_destination_alignment}
+test_that("indicator_cross_donor_systemic_destination_alignment works", {
+  expect_true(inherits(indicator_cross_donor_systemic_destination_alignment, "function")) 
+})
+```
+      
+  
+
+    
+  
+
+# Donor to Recipient
+
+## indicator_donor_recipient_relationship_duration
+    
+  
+```{r function-indicator_donor_recipient_relationship_duration}
+#' Donor-Recipient Relationship Duration Index
+#'
+#' Calculates the normalized duration of active funding between a donor and recipient.
+#'
+#' @param flows A dataframe containing `sourceObjects`, `destinationObjects`, and `budgetYear`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with columns `donor`, `recipient`, and `Relationship_Duration_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename
+#' @export
+indicator_donor_recipient_relationship_duration <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL ) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(
+      first_year = min(budgetYear, na.rm = TRUE),
+      last_year = max(budgetYear, na.rm = TRUE),
+      Relationship_Duration_Index = (last_year - first_year) / 
+        (max(budgetYear, na.rm = TRUE) - min(budgetYear, na.rm = TRUE))
+    )
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df,
+                                                by = c("donor", "recipient"))
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_relationship_duration}
+donor_recipient <- indicator_donor_recipient_relationship_duration(flows)
+#table(donor_recipient$Relationship_Duration_Index)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = Relationship_Duration_Index)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Relationship Duration Index",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Normalized duration of active funding relationships between donor-recipient
+    pairs (0=new relationship, 1=active since earliest data).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows relationship longevity across partnerships. Right-skewed 
+    distribution indicates many new relationships, left-skewed indicates 
+    established partnerships.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Long-term partnerships build trust, contextual understanding, and
+    operational efficiency, leading to more effective crisis response.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_relationship_duration}
+test_that("indicator_donor_recipient_relationship_duration works", {
+  expect_true(inherits(indicator_donor_recipient_relationship_duration, "function")) 
+})
+```
+  
+
+## indicator_donor_recipient_funding_growth
+     
+  
+```{r function-indicator_donor_recipient_funding_growth}
+#' Donor-Recipient Funding Growth Trend
+#'
+#' Estimates the linear growth (slope) of annual funding amounts from each 
+#' donor to recipient.
+#'
+#' @param flows A dataframe containing `sourceObjects`, `destinationObjects`,
+#'  `budgetYear`, `amountUSD`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with `donor`, `recipient`, and `Funding_Growth_Trend`.
+#' @importFrom dplyr filter group_by summarise mutate
+#' @importFrom stats lm coef
+#' @export
+indicator_donor_recipient_funding_growth <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(
+      Funding_Growth_Trend = tryCatch({
+        fit <- stats::lm(amountUSD ~ budgetYear)
+        stats::coef(fit)[["budgetYear"]]
+      }, error = function(e) NA_real_)
+    )
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df,
+                                                by = c("donor", "recipient"))
+  
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_funding_growth}
+donor_recipient <- indicator_donor_recipient_funding_growth(flows)
+#table(donor_recipient$Funding_Growth_Trend)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = Funding_Growth_Trend)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Funding Growth Trend",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Linear regression slope of annual funding amounts between donor-recipient 
+    pairs. Positive values=increasing funding, negative=decreasing funding.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows growth patterns across partnerships. Center around zero 
+    indicates stable funding, right tail indicates expanding partnerships.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies growing vs contracting funding relationships, helping prioritize
+    partnership development and identify successful collaboration models.", 
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_funding_growth}
+test_that("indicator_donor_recipient_funding_growth works", {
+  expect_true(inherits(indicator_donor_recipient_funding_growth, "function")) 
+})
+```
+  
+## indicator_donor_recipient_stability
+    
+  
+```{r function-indicator_donor_recipient_stability}
+#' Donor→Recipient: Relationship Stability Index
+#'
+#' Calculates how consistently a donor funds a recipient over the time series,
+#' as the proportion of years with nonzero funding between the pair.
+#' 
+#' Goal: Measures how consistently a donor funds a recipient over time 
+#' (share of active years).
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#' `budgetYear`, and `amountUSD`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with `donor`, `recipient`, and `DonorRecipient_Stability_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join n_distinct
+#' @export
+indicator_donor_recipient_stability <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(
+      active_years = dplyr::n_distinct(budgetYear[amountUSD > 0], na.rm = TRUE),
+      total_years = dplyr::n_distinct(budgetYear, na.rm = TRUE),
+      DonorRecipient_Stability_Index = ifelse(total_years > 0, active_years / total_years, NA_real_)
+    )
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df, 
+                                                by = c("donor", "recipient"))
+  
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_stability}
+donor_recipient <- indicator_donor_recipient_stability(flows)
+#table(donor_recipient$DonorRecipient_Stability_Index)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = DonorRecipient_Stability_Index)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Stability Index",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of years with active funding between donor-recipient pairs 
+    (0=sporadic funding, 1=consistent annual funding throughout relationship).",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows funding consistency patterns. Higher values indicate 
+    reliable annual partnerships, lower values indicate intermittent engagement.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Consistent funding enables long-term programming, staff retention, and 
+    institutional strengthening rather than project-based short-term engagements.", 
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_stability}
+test_that("indicator_donor_recipient_stability works", {
+  expect_true(inherits(indicator_donor_recipient_stability, "function")) 
+})
+```
+  
+## indicator_donor_recipient_concentration
+
+  
+```{r function-indicator_donor_recipient_concentration}
+#' Donor→Recipient: Funding Concentration Index
+#'
+#' Measures the share of a recipient’s total funding that comes from a 
+#' specific donor.
+#' 
+#' Goal: Quantifies how dependent the recipient is on that donor (share of 
+#' donor’s contribution among total received).
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`,
+#'  and `amountUSD`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with `donor`, `recipient`, and 
+#' `DonorRecipient_Concentration_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_donor_recipient_concentration <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(recipient, donor) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop_last") |>
+    dplyr::mutate(DonorRecipient_Concentration_Index = total / sum(total, na.rm = TRUE)) |>
+    dplyr::ungroup()
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df, 
+                                                by = c("donor", "recipient"))
+  
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_concentration}
+donor_recipient <- indicator_donor_recipient_concentration(flows)
+#table(donor_recipient$DonorRecipient_Stability_Index)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = DonorRecipient_Concentration_Index)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Concentration Index",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Share of recipient's total funding coming from specific donor (0-1). 
+    Higher values indicate recipient dependency on that donor.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows dependency levels across partnerships. Values near 1 
+    indicate critical donor dependencies requiring diversification strategies.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies vulnerable partnerships where recipient organizations risk 
+    severe disruption if key donors change funding priorities.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_concentration}
+test_that("indicator_donor_recipient_concentration works", {
+  expect_true(inherits(indicator_donor_recipient_concentration, "function")) 
+})
+```
+
+## indicator_donor_recipient_trend
+  
+  
+```{r function-indicator_donor_recipient_trend}
+#' Donor→Recipient: Funding Trend Index
+#'
+#' Computes the slope of the funding trend over time for each 
+#' donor–recipient pair.
+#' 
+#' Goal: Detects whether funding between a donor and recipient is increasing 
+#' or decreasing over time (slope of linear regression).
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`,
+#'  `budgetYear`, and `amountUSD`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with `donor`, `recipient`, 
+#' and `DonorRecipient_Trend_Index` (slope).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @importFrom stats lm coef
+#' @export
+indicator_donor_recipient_trend <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(
+      DonorRecipient_Trend_Index = tryCatch({
+        fit <- stats::lm(amountUSD ~ budgetYear)
+        stats::coef(fit)[["budgetYear"]]
+      }, error = function(e) NA_real_)
+    )
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df, 
+                                                by = c("donor", "recipient"))
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_trend}
+donor_recipient <- indicator_donor_recipient_trend(flows)
+#table(donor_recipient$DonorRecipient_Trend_Index)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = DonorRecipient_Trend_Index)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Trend Index",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Linear trend of funding amounts between donor-recipient pairs over time. 
+    Positive=increasing investment, negative=phasing out partnership.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows partnership evolution patterns. Right of zero indicates 
+    growing collaborations, left indicates declining engagements.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Reveals evolving partnership strategies - scaling successful collaborations
+    vs exiting less effective ones - informing relationship management.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_trend}
+test_that("indicator_donor_recipient_trend works", {
+  expect_true(inherits(indicator_donor_recipient_trend, "function")) 
+})
+```
+  
+## indicator_donor_recipient_reciprocity
+
+```{r function-indicator_donor_recipient_reciprocity}
+#' Donor→Recipient: Reciprocity Ratio
+#'
+#' Identifies donor–recipient pairs where both have exchanged funding
+#' (each organization acts as donor and recipient at least once).
+#' 
+#' Goal: Checks whether a donor and recipient have mutual funding roles 
+#' (both send and receive) — useful for consortia or pooled mechanisms.
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#' and `amountUSD`.
+#' @param donor_recipient_pairs (optional) A dataframe of donor–recipient pairs to merge 
+#' results with.
+#' @param donors (optional used if recipient_name is provided ) A dataframe with donor names to merge with the  results.  
+#' @param recipient_name (optional) the name of a specific recipient to filter the results of the function  
+#'
+#' @return A tibble with `donor`, `recipient`, 
+#' and `DonorRecipient_Reciprocity_Ratio` (0 or 1).
+#' @importFrom dplyr filter distinct left_join rename mutate
+#' @export
+indicator_donor_recipient_reciprocity <- function(flows, donor_recipient_pairs = NULL, 
+                                                            donors = NULL, 
+                                                           recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  donor_recipient <- flows |>
+    dplyr::select(sourceObjects, destinationObjects) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::distinct(donor, recipient)
+  
+  reciprocal <- donor_recipient |>
+    dplyr::inner_join(
+      donor_recipient |> dplyr::rename(donor = recipient, recipient = donor),
+      by = c("donor", "recipient")
+    ) |>
+    dplyr::mutate(DonorRecipient_Reciprocity_Ratio = 1)
+  
+  df <- donor_recipient |>
+   dplyr::left_join(reciprocal, by = c("donor", "recipient")) |>
+    dplyr::mutate(DonorRecipient_Reciprocity_Ratio = ifelse(is.na(DonorRecipient_Reciprocity_Ratio), 0, 1))
+  
+  if (!is.null(donor_recipient_pairs)) df <-dplyr::left_join(donor_recipient_pairs, df,
+                                                by = c("donor", "recipient"))
+  
+  
+  if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
+      df <- donor  |> 
+            dplyr::filter( recipient == recipient_name) |> 
+            dplyr::left_join(df,  by = c("donor"))
+  }
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_recipient_reciprocity}
+donor_recipient <- indicator_donor_recipient_reciprocity(flows)
+#table(donor_recipient$DonorRecipient_Reciprocity_Ratio)
+
+library(ggplot2)
+ggplot(donor_recipient, aes(x = DonorRecipient_Reciprocity_Ratio)) +
+  geom_histogram( fill = "green", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Recipient Reciprocity Ratio",
+    x = "",
+    y = "Number of Donor-Recipient Pairs",
+    caption = paste(
+    "Indicator interpretation:",
+    "Binary indicator of mutual funding relationships where both organizations 
+    act as donor and recipient to each other (0=one-way, 1=reciprocal).", "\n\n",
+    
+    "How to read the visualization:",
+    "Two bars showing proportion of one-way vs reciprocal partnerships. 
+    Higher reciprocal values indicate collaborative funding ecosystems.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Reciprocal funding indicates consortia, pooled funds, or collaborative 
+    programming arrangements that enhance coordination and local ownership.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_recipient_reciprocity}
+test_that("indicator_donor_recipient_reciprocity works", {
+  expect_true(inherits(indicator_donor_recipient_reciprocity, "function")) 
+})
+```
+  
+  
+
+# Donor to Destination
+
+## indicator_donor_destination_coverage
+    
+
+  
+```{r function-indicator_donor_destination_coverage}
+#' Donor→Destination: Coverage Index
+#'
+#' Calculates the proportion of destinations a donor supports 
+#' out of the total destinations in the dataset.
+#' 
+#' Goal: Measures how many distinct destinations (countries/plans/sectors)
+#'  a donor supports compared to the total destinations in the dataset.
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, and
+#'  `amountUSD`.
+#' @param donor_dest_df (optional) A dataframe of donor–destination pairs to
+#'  merge results with.
+#'
+#' @return A tibble with `donor`, `DonorDestination_Coverage_Index`.
+#' @importFrom dplyr filter distinct group_by summarise n_distinct mutate left_join rename
+#' @export
+indicator_donor_destination_coverage <- function(flows, donor_dest_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" ) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::filter(amountUSD > 0) |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      supported_dest = dplyr::n_distinct(destination),
+      total_dest = dplyr::n_distinct(flows$destinationObjects[[1]]$name),
+      DonorDestination_Coverage_Index = supported_dest / total_dest
+    )
+  
+  if (!is.null(donor_dest_df)) df <-dplyr::left_join(donor_dest_df, df,
+                                                     by = "donor")
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_destination_coverage}
+donor <- indicator_donor_destination_coverage(flows)
+#table(donor$DonorDestination_Concentration_Index)
+
+library(ggplot2)
+ggplot(donor, aes(x = DonorDestination_Coverage_Index)) +
+  geom_histogram( fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Destination Coverage Index",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of total destinations supported by donor (0 = few locations,
+    1 = active in all locations in dataset).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows coverage breadth. Higher values indicate donors with global
+    reach, lower values indicate regionally focused donors.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies global players vs regional specialists, informing crisis-specific
+    partnership strategies and gap analysis.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_destination_coverage}
+test_that("indicator_donor_destination_coverage works", {
+  expect_true(inherits(indicator_donor_destination_coverage, "function")) 
+})
+```
+  
+
+## indicator_donor_destination_trend
+
+  
+```{r function-indicator_donor_destination_trend}
+#' Donor→Destination: Geographic Focus Trend
+#'
+#' Evaluates whether a donor's destination concentration (HHI) is increasing or 
+#' decreasing over time.
+#' Goal: Captures whether a donor’s portfolio is becoming more or less geographically diversified over time (trend in HHI per year).
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#' `budgetYear`, and `amountUSD`.
+#' @param donor_dest_df (optional) A dataframe of donor–destination pairs to 
+#' merge results with.
+#'
+#' @return A tibble with `donor`, `DonorDestination_Focus_Trend` (slope).
+#' @importFrom dplyr  filter group_by summarise mutate rename left_join
+#' @importFrom stats lm coef
+#' @export
+indicator_donor_destination_trend <- function(flows, donor_dest_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  hhi_yearly <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" | 
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(donor, budgetYear, destination) |>
+    dplyr::summarise(amount = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::mutate(share = amount / sum(amount, na.rm = TRUE)) |>
+    dplyr::summarise(HHI = sum(share^2, na.rm = TRUE))
+  
+  df <- hhi_yearly |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      DonorDestination_Focus_Trend = tryCatch({
+        fit <- stats::lm(HHI ~ budgetYear)
+        stats::coef(fit)[["budgetYear"]]
+      }, error = function(e) NA_real_)
+    )
+  
+  if (!is.null(donor_dest_df)) df <-dplyr::left_join(donor_dest_df, df,
+                                                     by = "donor")
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_destination_trend}
+donor <- indicator_donor_destination_trend(flows)
+#table(donor$DonorDestination_Focus_Trend)
+
+library(ggplot2)
+ggplot(donor, aes(x = DonorDestination_Focus_Trend)) +
+  geom_histogram( fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Destination Focus Trend",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Linear trend of geographic concentration over time (negative = diversifying,
+    positive = focusing, zero = stable portfolio strategy).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows trend direction. Left of zero indicates donors broadening 
+    geographic scope, right indicates narrowing focus.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Reveals evolving donor strategies - expansion into new crises vs 
+    consolidation in core locations - for anticipating partnership 
+    opportunities.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_destination_trend}
+test_that("indicator_donor_destination_trend works", {
+  expect_true(inherits(indicator_donor_destination_trend, "function")) 
+})
+```
+  
+
+
+## indicator_donor_destination_concentration
+  
+```{r function-indicator_donor_destination_concentration}
+#' Donor→Destination: Portfolio Concentration Index
+#'
+#' Computes how concentrated a donor's funding portfolio is across destinations,
+#' using the Herfindahl–Hirschman Index (sum of squared funding shares).
+#' 
+#' Goal: Quantifies how concentrated (vs diversified) a donor’s funding 
+#' portfolio is across destinations using the Herfindahl–Hirschman Index (HHI).
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, and
+#'  `amountUSD`.
+#' @param donor_dest_df (optional) A dataframe of donor–destination pairs to
+#'  merge results with.
+#'
+#' @return A tibble with `donor`, `DonorDestination_Concentration_Index`
+#'          (0=diverse, 1=concentrated).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_donor_destination_concentration <- function(flows,
+                                                      donor_dest_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" | 
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(donor, destination) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), .groups = "drop_last") |>
+    dplyr::mutate(share = total / sum(total, na.rm = TRUE)) |>
+    dplyr::summarise(DonorDestination_Concentration_Index = sum(share^2,
+                                                                na.rm = TRUE))
+  
+  if (!is.null(donor_dest_df)) df <-dplyr::left_join(donor_dest_df, df, 
+                                                     by = "donor")
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_destination_concentration}
+donor <- indicator_donor_destination_concentration(flows)
+#table(donor$DonorDestination_Concentration_Index)
+
+library(ggplot2)
+ggplot(donor, aes(x = DonorDestination_Concentration_Index)) +
+  geom_histogram( fill = "steelblue", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Donor Destination Concentration Index",
+    x = "",
+    y = "Number of Donors",
+    caption = paste(
+    "Indicator interpretation:",
+    "Herfindahl-Hirschman Index measuring geographic portfolio concentration 
+    (0 = highly diversified, 1 = focused on few locations/plans).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows concentration levels. Left indicates global spread, right 
+    indicates focused geographic operations in few crises.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Helps understand donor geographic strategies - specialized crisis 
+    responders vs broad global supporters - for targeted engagement.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_donor_destination_concentration}
+test_that("indicator_donor_destination_concentration works", {
+  expect_true(inherits(indicator_donor_destination_concentration, "function")) 
+})
+```
+  
+
+
+
+
+## indicator_donor_destination_earmarking_flexibility
+
+  
+```{r function-indicator_donor_destination_earmarking_flexibility}
+#' Donor-Destination Earmarking Flexibility
+#'
+#' Computes a weighted average earmarking flexibility score for each 
+#' donor–destination pair. Higher values indicate more flexible
+#'  (less earmarked) funding.
+#'
+#' Scoring:
+#' - unearmarked       = 1.00  
+#' - softly earmarked  = 0.75  
+#' - earmarked         = 0.50  
+#' - tightly earmarked = 0.25  
+#'
+#' The indicator helps understand donor behaviour: how flexible their funding is
+#' across crisis-affected destinations.
+#'
+#' @param flows A dataframe containing `sourceObjects`, `destinationObjects`, 
+#'        `amountUSD`, and `grandBargainEarmarkingType`.
+#'
+#' @return A tibble with `donor`, `destination`, `Earmarking_Flexibility`,
+#'         and `total_amount`.
+#' @export
+indicator_donor_destination_earmarking_flexibility <- function(flows) {
+  
+  flows <- filter_flows_for_indicators(flows)
+
+  scoring <- tibble::tibble(
+    earmark = c("unearmarked", 
+                "softly earmarked",
+                "earmarked",
+                "tightly earmarked"),
+    score   = c(1.0, 0.75, 0.5, 0.25)
+  )
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD, 
+                  grandBargainEarmarkingType) |>
+    
+    ## ---- Unnest donor ----
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    
+    ## ---- Unnest destination ----
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    
+    ## ---- Clean earmarking types ----
+    dplyr::mutate(
+      earmark = purrr::map_chr(grandBargainEarmarkingType, ~ {
+        if (is.null(.x)) return(NA_character_)
+        tolower(trimws(as.character(.x)[1]))
+      })
+    ) |>
+    
+    dplyr::left_join(scoring, by = "earmark") |>
+    
+    ## ---- Aggregate ----
+    dplyr::group_by(donor, destination) |>
+    dplyr::summarise(
+      total_amount = sum(amountUSD, na.rm = TRUE),
+      Earmarking_Flexibility = weighted.mean(score, amountUSD, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  df
+}
+
+```
+  
+```{r example-indicator_donor_destination_earmarking_flexibility}
+donor_destination <- indicator_donor_destination_earmarking_flexibility(flows)
+#table(donor_destination$Earmarking_Flexibility)
+donor_destination <- indicator_donor_destination_earmarking_flexibility(flows)
+
+# ---- Select top donors & top destinations by total USD ----
+top_donors <- donor_destination |>
+  dplyr::group_by(donor) |>
+  dplyr::summarise(total = sum(total_amount, na.rm = TRUE)) |>
+  dplyr::arrange(desc(total)) |>
+  dplyr::slice_head(n = 15)
+
+top_destinations <- donor_destination |>
+  dplyr::group_by(destination) |>
+  dplyr::summarise(total = sum(total_amount, na.rm = TRUE)) |>
+  dplyr::arrange(desc(total)) |>
+  dplyr::slice_head(n = 15)
+
+donor_destination_top15 <- donor_destination |>
+  dplyr::filter(
+    donor %in% top_donors$donor,
+    destination %in% top_destinations$destination
+  )
+
+# (Optional) reorder factors for readability
+donor_destination_top15 <- donor_destination_top15 |>
+  dplyr::mutate(
+    donor = factor(donor, levels = sort(unique(donor))),
+    destination = factor(destination, levels = sort(unique(destination)))
+  )
+
+# ---- ggplot2 heatmap ----
+ggplot2::ggplot(
+  donor_destination_top15,
+  ggplot2::aes(
+    x = destination,
+    y = donor,
+    fill = Earmarking_Flexibility
+  )
+) +
+  ggplot2::geom_tile(color = "white") +
+
+  # Color-blind friendly scale
+  viridis::scale_fill_viridis(
+    name = "Flexibility",
+    option = "viridis",      # color-blind friendly
+    direction = 1,
+    limits = c(0.25, 1.0),
+    na.value = "grey80"
+  ) +
+  ggplot2::labs(
+    title = "Donor–Destination Earmarking Flexibility
+    (Top 15 Donors & Destinations)",
+    subtitle = "Weighted average flexibility score 
+    (1.0 = unearmarked → 0.25 = tightly earmarked)",
+    x = "Destination Country",
+    y = "Donor",
+    caption = paste(
+    "Indicator interpretation:",
+    "Weighted average earmarking flexibility for donor-destination pairs 
+    (1=unearmarked, 0.75=softly earmarked, 0.5=earmarked, 0.25=tightly earmarked).",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Heatmap shows flexibility patterns. Darker colors indicate more flexible 
+    funding arrangements between specific donor-destination combinations.", 
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies which donors provide flexible funding to specific crises,
+    enabling context-responsive programming and local decision-making.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  ) +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    legend.position = "right",
+    panel.grid = ggplot2::element_blank()
+  )
+```
+  
+```{r tests-indicator_donor_destination_earmarking_flexibility}
+test_that("indicator_donor_destination_earmarking_flexibility works", {
+  expect_true(inherits(indicator_donor_destination_earmarking_flexibility, "function")) 
+})
+```
+  
+## indicator_donor_destination_risk_tolerance
+     
+  
+```{r function-indicator_donor_destination_risk_tolerance}
+#' Donor Risk Tolerance
+#'
+#' Estimates donor risk tolerance as the share of funding going to:
+#' - high-risk locations, and/or  
+#' - new or untested recipient organisations.
+#'
+#' A higher score indicates a donor is more willing to take risk.
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#' and `amountUSD`.
+#' @param high_risk_locations Character vector of high-risk location names.
+#' @param new_partners Character vector of new or emerging recipient organisations.
+#'
+#' @return A tibble with `donor` and `Risk_Tolerance`.
+#' @importFrom dplyr filter group_by summarise mutate rename
+#' @export
+indicator_donor_destination_risk_tolerance <- function(
+  flows,
+  high_risk_locations,
+  new_partners
+) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  # Clean user lists
+  high_risk_locations <- tolower(trimws(high_risk_locations))
+  new_partners       <- tolower(trimws(new_partners))
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    
+    # ---- Unnest donor ----
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    
+    # ---- Unnest destination ----
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location", "Organization")) |>
+    dplyr::rename(
+      entity_name = destinationObjects_name,
+      entity_type = destinationObjects_type
+    ) |>
+    
+    dplyr::mutate(
+      entity_clean = tolower(trimws(entity_name)),
+      is_risky =
+        (entity_type == "Location"     & entity_clean %in% high_risk_locations) |
+        (entity_type == "Organization" & entity_clean %in% new_partners)
+    ) |>
+    
+    dplyr::group_by(donor) |>
+    dplyr::summarise(
+      total = sum(amountUSD, na.rm = TRUE),
+      risky = sum(amountUSD[is_risky], na.rm = TRUE),
+      Risk_Tolerance = ifelse(total > 0, risky / total, NA_real_),
+      .groups = "drop"
+    )
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_destination_risk_tolerance}
+donor_risk <- indicator_donor_destination_risk_tolerance(
+  flows,
+  high_risk_locations = c("Sudan", "South Sudan", "Somalia", "Afghanistan"),
+  new_partners        = c("Local NGO A", "Community Org B")
+)
+
+# Identify top 15 donors by total contributions
+top15 <- donor_risk |>
+  dplyr::arrange(desc(total)) |>
+  dplyr::slice_head(n = 15)
+
+donor_risk_top15 <- donor_risk |>
+  dplyr::filter(donor %in% top15$donor) |>
+  dplyr::mutate(
+    donor = factor(donor, levels = top15$donor)
+  )
+
+# ---- ggplot2 visualisation (viridis) ----
+ggplot2::ggplot(
+  donor_risk_top15,
+  ggplot2::aes(
+    x = donor,
+    y = Risk_Tolerance,
+    fill = Risk_Tolerance
+  )
+) +
+  ggplot2::geom_col() +
+  viridis::scale_fill_viridis(
+    name = "Risk Tolerance",
+    option = "viridis",
+    direction = 1,
+    limits = c(0, 1),
+    na.value = "grey80"
+  ) +
+  ggplot2::coord_flip() +
+  ggplot2::labs(
+    title = "Donor Risk Tolerance (Top 15 Donors)",
+    subtitle = "Share of funding directed to high-risk locations or new partners",
+    x = "Donor",
+    y = "Risk Tolerance (0–1)",
+    caption = paste(
+    "Indicator interpretation:",
+    "Share of donor funding going to high-risk locations or new/untested partners.
+    Higher values indicate greater risk tolerance in funding decisions.", "\n\n",
+    
+    "How to read the visualization:",
+    "Bar chart shows risk tolerance levels across top donors. Higher bars 
+    indicate donors more willing to fund in complex environments or with new 
+    partners.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies donors supporting frontline response in most challenging 
+    contexts and investing in local capacity building through new partnerships.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  ) +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "right"
+  )
+```
+  
+```{r tests-indicator_donor_destination_risk_tolerance}
+test_that("indicator_donor_destination_risk_tolerance works", {
+  expect_true(inherits(indicator_donor_destination_risk_tolerance, "function")) 
+})
+```
+    
+    
+## indicator_donor_destination_stability
+  
+```{r function-indicator_donor_destination_stability}
+#' Donor→Destination: Geographic Stability Index
+#'
+#' Calculates the fraction of years a donor funds a destination out of all
+#' years they have any funding relationship. Higher values indicate sustained,
+#' long-term donor engagement.
+#'
+#' @param flows A dataframe with `sourceObjects`, `destinationObjects`, 
+#'        `budgetYear`, and `amountUSD`.
+#' @param donor_dest_df Optional tibble of donor–destination pairs to merge with.
+#'
+#' @return A tibble with `donor`, `destination`,
+#'         and `DonorDestination_Stability_Index`.
+#'
+#' @importFrom dplyr filter group_by summarise mutate rename left_join n_distinct
+#' @export
+indicator_donor_destination_stability <- function(flows, donor_dest_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, budgetYear, amountUSD) |>
+    
+    # --- Unnest donor ---
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    
+    # --- Unnest destination ---
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location", "Plan")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    
+    dplyr::group_by(donor, destination) |>
+    dplyr::summarise(
+      active_years = dplyr::n_distinct(budgetYear[amountUSD > 0]),
+      total_years  = dplyr::n_distinct(budgetYear),
+      DonorDestination_Stability_Index =
+        ifelse(total_years > 0, active_years / total_years, NA_real_),
+      .groups = "drop"
+    )
+  
+  if (!is.null(donor_dest_df)) {
+    df <- dplyr::left_join(donor_dest_df, df, by = c("donor", "destination"))
+  }
+  
+  return(df)
+}
+```
+  
+```{r example-indicator_donor_destination_stability}
+# Compute indicator
+donor_destination<- indicator_donor_destination_stability(flows)
+
+# Identify top 15 destinations by number of active donors or total flows
+top_destinations <- donor_destination |>
+  dplyr::group_by(destination) |>
+  dplyr::summarise(total_stability = sum(DonorDestination_Stability_Index,
+                                         na.rm = TRUE)) |>
+  dplyr::arrange(desc(total_stability)) |>
+  dplyr::slice_head(n = 15)
+
+stability_top <- donor_destination |>
+  dplyr::filter(destination %in% top_destinations$destination) |>
+  dplyr::mutate(
+    destination = factor(destination, levels = top_destinations$destination),
+    donor = factor(donor)
+  )
+
+# ---- ggplot2 visualisation ----
+ggplot2::ggplot(
+  stability_top,
+  ggplot2::aes(
+    x = destination,
+    y = donor,
+    fill = DonorDestination_Stability_Index
+  )
+) +
+  ggplot2::geom_tile(color = "white") +
+  
+  viridis::scale_fill_viridis(
+    name = "Stability (0–1)",
+    option = "viridis",
+    limits = c(0, 1),
+    na.value = "grey80"
+  ) +
+  
+  ggplot2::labs(
+    title = "Donor → Destination Geographic Stability Index",
+    subtitle = "Share of years each donor funded a destination
+    (0 = occasional; 1 = consistent every year)",
+    x = "Destination",
+    y = "Donor",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of years with active funding between donor-destination pairs
+    (0=sporadic engagement, 1=consistent annual funding throughout period).", 
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Heatmap shows funding consistency patterns. Darker colors indicate stable 
+    long-term donor engagement in specific crisis contexts.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies donors providing predictable funding to specific crises, 
+    enabling long-term programming and sustainable response capacity building.", 
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  ) +
+  
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  ggplot2::theme(
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    panel.grid = ggplot2::element_blank(),
+    legend.position = "right"
+  )
+
+```
+  
+```{r tests-indicator_donor_destination_stability}
+test_that("indicator_donor_destination_stability works", {
+  expect_true(inherits(indicator_donor_destination_stability, "function")) 
+})
+```
+  
+# Recipient
+
+## indicator_recipient_funding_share
+     
+  
+```{r function-indicator_recipient_funding_share}
+#' Funding Volume Share
+#'
+#' Calculates the share of total funding received by each recipient organization.
+#'
+#' @param flows A dataframe containing `destinationObjects` and `amountUSD`.
+#' @param recipients Optional dataframe of recipient organizations to merge 
+#' with the results.
+#'
+#' @return A tibble with columns `recipient` and `Funding_Volume_Share`.
+#' @importFrom dplyr filter group_by summarise mutate left_join
+#' @export
+indicator_recipient_funding_share <- function(flows, recipients = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  recipients_df <- flows |>
+    dplyr::select(destinationObjects, amountUSD) |>
+    tidyr::unnest(destinationObjects) |>
+    dplyr::filter(type == "Organization") |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(total_received = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop") |>
+    dplyr::mutate(Funding_Volume_Share = total_received / sum(total_received,
+                                                              na.rm = TRUE)) |>
+    dplyr::rename(recipient = name)
+  
+  if (!is.null(recipients)) {
+    recipients_df <- recipients |>
+     dplyr::left_join(recipients_df, by = "recipient")
+  }
+  
+  return(recipients_df)
+}
+```
+  
+```{r example-indicator_recipient_funding_share}
+recipients <- indicator_recipient_funding_share(flows)
+#table(recipients$Funding_Volume_Share)
+
+library(ggplot2)
+# Basic histogram of Knowledge Sharing Intensity
+ggplot(recipients, aes(x = Funding_Volume_Share)) +
+  geom_histogram( fill = "lightgreen", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Recipients Funding Volume Share",
+    x = "",
+    y = "Number of Recipients",
+    caption = paste(
+    "Indicator interpretation:",
+    "Measures the proportion of total humanitarian funding received by each 
+    recipient organization. Higher values indicate larger market share.", 
+    "\n\n",
+    
+    "How to read the visualization:",
+    "X-axis shows funding share (0-1), Y-axis shows recipient count. Most 
+    recipients will have small shares, few will dominate (right tail).", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies major implementing partners and market concentration, helping 
+    understand dependency risks and partnership opportunities.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+
+```
+  
+```{r tests-indicator_recipient_funding_share}
+test_that("indicator_recipient_funding_share works", {
+  expect_true(inherits(indicator_recipient_funding_share, "function")) 
+})
+```
+    
+    
+## indicator_recipient_amount_stability
+
+  
+```{r function-indicator_recipient_amount_stability}
+#' Amount Stability
+#'
+#' Measures the stability of annual funding amounts for each recipient as 
+#' 1 minus the coefficient of variation of annual totals.
+#'
+#' @param flows A dataframe containing `destinationObjects`, `budgetYear`, 
+#' and `amountUSD`.
+#' @param recipients Optional dataframe of recipient organizations to merge.
+#'
+#' @return A tibble with columns `recipient` and `Amount_Stability`.
+#' @importFrom dplyr group_by summarise mutate left_join
+#' @export
+indicator_recipient_amount_stability <- function(flows, recipients = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  recipients_df <- flows |>
+    dplyr::select(destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects) |>
+    dplyr::filter(type == "Organization") |>
+    dplyr::group_by(name, budgetYear) |>
+    dplyr::summarise(annual_amount = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop_last") |>
+    dplyr::summarise(
+      mean_amt = mean(annual_amount, na.rm = TRUE),
+      sd_amt = sd(annual_amount, na.rm = TRUE),
+      Amount_Stability = 1 - (sd_amt / mean_amt)
+    ) |>
+    dplyr::rename(recipient = name)
+  
+  if (!is.null(recipients)) {
+    recipients_df <- recipients |>
+     dplyr::left_join(recipients_df, by = "recipient")
+  }
+  
+  return(recipients_df)
+}
+```
+  
+```{r example-indicator_recipient_amount_stability}
+
+recipients <- indicator_recipient_amount_stability(flows)
+#table(recipients$Amount_Stability)
+
+library(ggplot2)
+ggplot(recipients, aes(x = Amount_Stability)) +
+  geom_histogram( fill = "lightgreen", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Recipients Amount Stability",
+    x = "",
+    y = "Number of Recipients",
+    caption = paste(
+    "Indicator interpretation:",
+    "Measures year-to-year funding stability as 1 minus coefficient of variation.
+    1 = perfectly stable annual funding, lower values = volatile funding 
+    patterns.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows stability scores. Higher values indicate predictable funding
+    streams, negative values indicate high volatility (SD > mean).", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Stable funding enables long-term programming and institutional strengthening,
+    while volatility disrupts operations and staff retention.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_recipient_amount_stability}
+test_that("indicator_recipient_amount_stability works", {
+  expect_true(inherits(indicator_recipient_amount_stability, "function")) 
+})
+```
+      
+## indicator_recipient_cofunding_rate
+
+```{r function-indicator_recipient_cofunding_rate}
+#' Co-Funding Rate
+#'
+#' Calculates the percentage of flows where a recipient shares funding 
+#' with other recipient organizations (not the sole recipient).
+#'
+#' @param flows A dataframe containing `destinationObjects` and `amountUSD`.
+#' @param recipients Optional dataframe of recipient organizations to merge.
+#'
+#' @return A tibble with `recipient` and `Co_Funding_Rate`.
+#' @importFrom dplyr group_by summarise mutate left_join n_distinct rename
+#' @importFrom tidyr unnest
+#' @export
+indicator_recipient_cofunding_rate <- function(flows, recipients = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  # Step 1: compute whether each flow is shared
+  cofunding <- flows |>
+    dplyr::select(id, destinationObjects, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_sep = "_") |>  
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::group_by(id) |>
+    dplyr::summarise(recipient_count = n_distinct(destinationObjects_name),
+                     .groups = "drop") |>
+    dplyr::mutate(shared = recipient_count > 1)
+  
+  # Step 2: map back to each recipient
+  recipients_df <- flows |>
+    dplyr::select(id, destinationObjects) |>
+    tidyr::unnest(destinationObjects, names_sep = "_") |>  
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::left_join(cofunding, by = "id") |>
+    dplyr::group_by(recipient) |>
+    dplyr::summarise(Co_Funding_Rate = mean(shared, na.rm = TRUE),
+                     .groups = "drop")
+  
+  # Step 3: optional merge with recipients
+  if (!is.null(recipients)) {
+    recipients_df <- recipients |>
+      dplyr::left_join(recipients_df, by = "recipient")
+  }
+  
+  return(recipients_df)
+}
+```
+  
+```{r example-indicator_recipient_cofunding_rate}
+recipients <- indicator_recipient_cofunding_rate(flows)
+#table(recipients$Co_Funding_Rate)
+
+library(ggplot2)
+ggplot(recipients, aes(x = Co_Funding_Rate)) +
+  geom_histogram( fill = "lightgreen", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Recipients CoFunding Rate",
+    x = "",
+    y = "Number of Recipients",
+    caption = paste(
+    "Indicator interpretation:",
+    "Percentage of funding flows where recipient shares funding with other 
+    organizations (not sole recipient). 0 = always sole recipient, 
+    1 = always co-funded.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows co-funding frequency. Higher values indicate collaborative
+    funding arrangements, lower values indicate standalone projects.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies organizations experienced in consortium work and coordination,
+    crucial for complex multi-partner responses and integrated programming.", 
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_recipient_cofunding_rate}
+test_that("indicator_recipient_cofunding_rate works", {
+  expect_true(inherits(indicator_recipient_cofunding_rate, "function")) 
+})
+```
+    
+## indicator_recipient_systemic_diversification
+  
+```{r function-indicator_recipient_systemic_diversification}
+#' Recipient Systemic: Diversification Index
+#'
+#' Calculates the entropy of funding sources per recipient, indicating
+#' how diversified a recipient’s funding base is across donors.
+#' 
+#' Goal: Measures how many donors contribute to each recipient, using entropy.
+#' High entropy = diversified funding base.
+#'
+#' @param flows A dataframe including `sourceObjects`, `destinationObjects`,
+#'  and `amountUSD`.
+#' @param recipients_df (optional) A dataframe with recipient names to merge 
+#' with the results.
+#'
+#' @return A tibble with `recipient` and `Recipient_Diversification_Index` 
+#' (0–1 scale).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join n
+#' @importFrom tidyr unnest
+#' @export
+indicator_recipient_systemic_diversification <- function(flows,
+                                                         recipients_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(sourceObjects, names_sep = "_") |>    
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_sep = "_") |> 
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::group_by(recipient, donor) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), .groups = "drop_last") |>
+    dplyr::mutate(share = total / sum(total, na.rm = TRUE)) |>
+    dplyr::summarise(
+      entropy = -sum(share * log(share), na.rm = TRUE),
+      Recipient_Diversification_Index = entropy / log(dplyr::n()),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Recipient_Diversification_Index = pmin(Recipient_Diversification_Index, 1))
+  
+  if (!is.null(recipients_df)) {
+    df <- dplyr::left_join(recipients_df, df, by = "recipient")
+  }
+  
+  return(df)
+}
+
+```
+  
+```{r example-indicator_recipient_systemic_diversification}
+recipients <- indicator_recipient_systemic_diversification(flows)
+#table(recipients$Recipient_Diversification_Index)
+
+library(ggplot2)
+ggplot(recipients, aes(x = Recipient_Diversification_Index)) +
+  geom_histogram( fill = "lightgreen", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Recipient Diversification Index",
+    x = "",
+    y = "Number of Recipients",
+    caption = paste(
+    "Indicator interpretation:",
+    "Entropy-based measure of funding source diversification across donors. 
+    0 = dependent on single donor,
+    1 = perfectly diversified across many donors.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows diversification levels. Higher values indicate resilient 
+    funding bases, lower values indicate donor concentration risks.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Diversified funding reduces vulnerability to individual donor policy 
+    changes and enhances organizational sustainability and independence.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_recipient_systemic_diversification}
+test_that("indicator_recipient_systemic_diversification works", {
+  expect_true(inherits(indicator_recipient_systemic_diversification, "function")) 
+})
+```
+      
+
+
+        
+
+# Destination
+## indicator_destination_modality_innovation
+     
+  
+```{r function-indicator_destination_modality_innovation}
+#' Modality Innovation
+#'
+#' Calculates the percentage of funding to a destination that is Cash Transfer
+#'  Programming (CTP).
+#'
+#' @param flows A dataframe with `destinationObjects`, `amountUSD`, and `method`.
+#' @param destinations Optional dataframe to merge results with.
+#'
+#' @return A tibble with `destination` and `Modality_Innovation`.
+#' @importFrom dplyr filter group_by summarise mutate left_join
+#' @export
+indicator_destination_modality_innovation <- function(flows, 
+                                                      destinations = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  dest_df <- flows |>
+    dplyr::select(destinationObjects, method, amountUSD) |>
+    tidyr::unnest(destinationObjects) |>
+    dplyr::filter(type == "Location") |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(
+      total = sum(amountUSD, na.rm = TRUE),
+      ctp = sum(amountUSD[method == "Cash Transfer Programming (CTP)"],
+                na.rm = TRUE),
+      Modality_Innovation = ifelse(total > 0, ctp / total, NA_real_)
+    ) |>
+    dplyr::rename(destination = name)
+  
+  if (!is.null(destinations)) {
+    dest_df <- destinations |>
+     dplyr::left_join(dest_df, by = "destination")
+  }
+  
+  return(dest_df)
+}
+```
+  
+```{r example-indicator_destination_modality_innovation}
+destination <- indicator_destination_modality_innovation(flows)
+#table(destination $Recipient_Diversification_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Modality_Innovation)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Modality Innovation",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Percentage of funding using Cash Transfer Programming (CTP) per destination.
+    Higher values indicate greater adoption of innovative cash-based approaches.",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows CTP adoption rates across destinations. Right-skewed 
+    distribution indicates most destinations have low CTP usage, few are CTP 
+    leaders.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Cash programming increases efficiency, dignity, and local market benefits.
+    Identifies destinations where cash coordination capacity may need 
+    strengthening.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_modality_innovation}
+test_that("indicator_destination_modality_innovation works", {
+  expect_true(inherits(indicator_destination_modality_innovation, "function")) 
+})
+```
+  
+
+## indicator_destination_pipeline_visibility
+     
+  
+```{r function-indicator_destination_pipeline_visibility}
+#' Pipeline Visibility
+#'
+#' Measures the proportion of funding flows per destination that extend beyond 
+#' the current year.
+#'
+#' @param flows A dataframe with `destinationObjects`, `budgetYear`, 
+#' and `amountUSD`.
+#' @param current_year Numeric, the current calendar year.
+#' @param destinations Optional dataframe to merge.
+#'
+#' @return A tibble with `destination` and `Pipeline_Visibility`.
+#' @importFrom dplyr filter group_by summarise mutate left_join
+#' @export
+indicator_destination_pipeline_visibility <- function(flows,
+                                    current_year = as.numeric(format(Sys.Date(), "%Y")),
+                                    destinations = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  dest_df <- flows |>
+    dplyr::select(destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects) |>
+    dplyr::filter(type == "Location") |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(
+      total_flows = dplyr::n(),
+      future_flows = sum(budgetYear > current_year, na.rm = TRUE),
+      Pipeline_Visibility = ifelse(total_flows > 0, future_flows / total_flows,
+                                   NA_real_)
+    ) |>
+    dplyr::rename(destination = name)
+  
+  if (!is.null(destinations)) {
+    dest_df <- destinations |>
+     dplyr::left_join(dest_df, by = "destination")
+  }
+  
+  return(dest_df)
+}
+```
+  
+```{r example-indicator_destination_pipeline_visibility}
+destination <- indicator_destination_pipeline_visibility(flows)
+#table(destination$Recipient_Diversification_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Pipeline_Visibility)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Pipeline Visibility",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of funding flows extending beyond current year. Higher values
+    indicate better forward visibility and multi-year planning capacity.",
+    "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows pipeline visibility across destinations. Most destinations
+    cluster near zero, indicating predominantly annual funding cycles.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Multi-year funding enables strategic programming, staff retention, and
+    sustainable crisis response rather than short-term emergency patches.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_pipeline_visibility}
+test_that("indicator_destination_pipeline_visibility works", {
+  expect_true(inherits(indicator_destination_pipeline_visibility, "function")) 
+})
+```
+  
+
+## indicator_destination_earmarking_flexibility
+
+```{r function-indicator_destination_earmarking_flexibility}
+#' Earmarking Flexibility
+#'
+#' Computes a weighted average earmarking flexibility index per destination 
+#' (Unearmarked = 1.0, Softly earmarked = 0.75, Earmarked = 0.5, Tightly earmarked = 0.25).
+#'
+#' @param flows A dataframe with `destinationObjects`, `amountUSD`,
+#'  and `grandBargainEarmarkingType`.
+#' @param destinations Optional dataframe to merge.
+#'
+#' @return A tibble with `destination` and `Earmarking_Flexibility`.
+#'
+#' @importFrom dplyr filter mutate group_by summarise left_join case_when select rename
+#' @importFrom tidyr unnest
+#' @export
+indicator_destination_earmarking_flexibility <- function(flows, 
+                                                         destinations = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  # flows |>
+  #   dplyr::pull(grandBargainEarmarkingType) |>
+  #   unlist() |>
+  #   unique()
+  # 
+  #   "unearmarked" "softly earmarked", "earmarked", "tightly earmarked"
+
+  # Earmarking scoring table
+  scoring <- tibble::tibble(
+    type = c("unearmarked", "softly earmarked", "earmarked", "tightly earmarked"),
+    score = c(1.0, 0.75, 0.5, 0.25)
+  )
+  
+  dest_df <- flows |>
+    dplyr::select(destinationObjects, grandBargainEarmarkingType, amountUSD) |>
+    
+    # Safer unnesting — gives destinationObjects_name, destinationObjects_type, etc.
+    tidyr::unnest(destinationObjects, names_sep = "_") |>
+    
+    # Restrict to geographic destinations
+    dplyr::filter(destinationObjects_type == "Location") |>
+    
+    # Flatten earmarking type list-column into a simple character
+    dplyr::mutate(
+      earmark = purrr::map_chr(grandBargainEarmarkingType, ~
+        if (is.null(.x)) NA_character_ else as.character(.x)[1]
+      )
+    ) |>
+    
+    # Join scoring table
+    dplyr::left_join(scoring, by = c("earmark" = "type")) |>
+    
+    dplyr::group_by(destinationObjects_name) |>
+    dplyr::summarise(
+      Earmarking_Flexibility = weighted.mean(score, amountUSD, na.rm = TRUE)
+    ) |>
+    dplyr::rename(destination = destinationObjects_name)
+  
+  # Optionally merge with a provided destinations df
+  if (!is.null(destinations)) {
+    dest_df <- dplyr::left_join(destinations, dest_df, by = "destination")
+  }
+  
+  return(dest_df)
+}
+```
+  
+```{r example-indicator_destination_earmarking_flexibility}
+destination <- indicator_destination_earmarking_flexibility(flows)
+#table(destination$Earmarking_Flexibility)
+
+library(ggplot2)
+ggplot(destination, aes(x = Earmarking_Flexibility)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Earmarking Flexibility",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Weighted average of earmarking flexibility (1=unearmarked, 0.75=softly
+    earmarked, 0.5=earmarked, 0.25=tightly earmarked). Higher values indicate 
+    more flexible funding.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows flexibility scores. Higher values indicate destinations 
+    receiving more unearmarked funding for adaptive programming.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Flexible funding enables context-responsive programming, local leadership, 
+    and efficient resource allocation based on evolving needs rather than 
+    rigid donor requirements.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_earmarking_flexibility}
+test_that("indicator_destination_earmarking_flexibility works", {
+  expect_true(inherits(indicator_destination_earmarking_flexibility, "function")) 
+})
+```
+  
+
+## indicator_destination_donor_diversity
+
+  
+```{r function-indicator_destination_donor_diversity}
+#' Destination-Focused: Donor Diversity Index
+#'
+#' Calculates how diversified a destination's funding sources are
+#' using the inverse Herfindahl–Hirschman Index across donors.
+#' 
+#' Goal: Measures how diversified funding sources are (inverse of dependency).
+#' Computed using the inverse Herfindahl–Hirschman Index (1–HHI) across donors.
+#'
+#' @param flows A dataframe with `destinationObjects`, `sourceObjects`, 
+#' and `amountUSD`.
+#' @param destinations_df (optional) A dataframe of destinations to merge
+#'  results with.
+#'
+#' @return A tibble with `destination` and `Destination_Donor_Diversity_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_destination_donor_diversity <- function(flows, 
+                                                  destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, sourceObjects, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" |
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::group_by(destination, donor) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::mutate(share = total / sum(total, na.rm = TRUE)) |>
+    dplyr::summarise(Destination_Donor_Diversity_Index = 1 - sum(share^2,
+                                                                 na.rm = TRUE))
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, df,
+                                                       by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_donor_diversity}
+destination <- indicator_destination_donor_diversity(flows)
+#table(destination$Earmarking_Flexibility)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Donor_Diversity_Index)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Donor Diversity Index",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Inverse Herfindahl-Hirschman Index measuring donor diversification 
+    (0=single donor dependency, 1=highly diversified funding base).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows diversification levels. Higher values indicate resilient
+    funding ecosystems, lower values indicate vulnerability to individual
+    donor decisions.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Diversified funding reduces crisis vulnerability to donor policy changes
+    and ensures more stable response capacity during political shifts.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_donor_diversity}
+test_that("indicator_destination_donor_diversity works", {
+  expect_true(inherits(indicator_destination_donor_diversity, "function")) 
+})
+```
+  
+## indicator_destination_funding_stability
+    
+  
+```{r function-indicator_destination_funding_stability}
+#' Destination-Focused: Funding Stability Index
+#'
+#' Measures how stable funding amounts are for each destination over time.
+#' Computed as 1 - coefficient of variation of annual funding.
+#' Goal: Captures predictability of funding amounts over years (inverse of
+#'  coefficient of variation).
+#'
+#' @param flows A dataframe with `destinationObjects`, `budgetYear`,
+#'  and `amountUSD`.
+#' @param destinations_df (optional) A dataframe of destinations to merge
+#'  results with.
+#'
+#' @return A tibble with `destination` and `Destination_Funding_Stability_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_destination_funding_stability <- function(flows,
+                                                    destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", 
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" | 
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(destination, budgetYear) |>
+    dplyr::summarise(total_year = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::summarise(
+      mean_amt = mean(total_year, na.rm = TRUE),
+      sd_amt = sd(total_year, na.rm = TRUE),
+      Destination_Funding_Stability_Index = ifelse(mean_amt > 0, 
+                                                   1 - (sd_amt / mean_amt),
+                                                   NA_real_)
+    )
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, df,
+                                                       by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_funding_stability}
+destination <- indicator_destination_funding_stability(flows)
+#table(destination$Destination_Funding_Stability_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Funding_Stability_Index)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Funding Stability Index",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "1 minus coefficient of variation of annual funding amounts. 
+    1=perfectly stable, lower values=volatile funding, 
+    negative values=high volatility (SD > mean).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows stability patterns. Higher values enable predictable 
+    programming, negative values indicate boom-bust cycles disrupting operations.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Funding stability enables long-term planning, staff retention, and 
+    consistent service delivery rather than reactive emergency-only responses.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_funding_stability}
+test_that("indicator_destination_funding_stability works", {
+  expect_true(inherits(indicator_destination_funding_stability, "function")) 
+})
+```
+  
+
+## indicator_destination_funding_trend
+    
+  
+```{r function-indicator_destination_funding_trend}
+#' Destination-Focused: Funding Growth Trend
+#'
+#' Computes the slope of the linear regression of funding over time
+#' for each destination.
+#' Goal: Detects whether funding to a destination is increasing or decreasing 
+#' over time.
+#'
+#' @param flows A dataframe with `destinationObjects`, `budgetYear`, 
+#' and `amountUSD`.
+#' @param destinations_df (optional) A dataframe of destinations to merge 
+#' results with.
+#'
+#' @return A tibble with `destination` and `Destination_Funding_Growth_Trend`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @importFrom stats lm coef
+#' @export
+indicator_destination_funding_trend <- function(flows, destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", 
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" | 
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(destination, budgetYear) |>
+    dplyr::summarise(total_year = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop_last") |>
+    dplyr::summarise(
+      Destination_Funding_Growth_Trend = tryCatch({
+        fit <- stats::lm(total_year ~ budgetYear)
+        stats::coef(fit)[["budgetYear"]]
+      }, error = function(e) NA_real_)
+    )
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df,
+                                                       df, by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_funding_trend}
+destination <- indicator_destination_funding_trend(flows)
+#table(destination$Destination_Funding_Growth_Trend)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Funding_Growth_Trend)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Funding Growth Trend",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Linear regression slope of annual funding over time. 
+    Positive values=increasing funding, negative values=decreasing funding,
+    zero=stable funding.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows growth/decline patterns. Right of zero indicates expanding
+    crisis responses, left indicates potential donor fatigue or improving 
+    contexts.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies crises receiving increasing attention vs. those facing funding
+    declines despite ongoing needs, informing advocacy priorities.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_funding_trend}
+test_that("indicator_destination_funding_trend works", {
+  expect_true(inherits(indicator_destination_funding_trend, "function")) 
+})
+```
+  
+## indicator_destination_donor_retention
+
+  
+```{r function-indicator_destination_donor_retention}
+#' Destination-Focused: Donor Retention Index
+#'
+#' Calculates the proportion of donors who provided funding to a destination
+#' in consecutive years (repeat donors).
+#' Goal: Measures the proportion of donors who continue funding a destination 
+#' year after year.
+#'
+#' @param flows A dataframe with `destinationObjects`, `sourceObjects`, 
+#' `budgetYear`, and `amountUSD`.
+#' @param destinations_df (optional) A dataframe of destinations to merge
+#'  results with.
+#'
+#' @return A tibble with `destination` and `Destination_Donor_Retention_Index`.
+#' @importFrom dplyr filter group_by summarise mutate rename left_join arrange lag n_distinct
+#' @importFrom purrr map2_dbl  
+#' @export
+indicator_destination_donor_retention <- function(flows, destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, sourceObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location" |
+                    destinationObjects_type == "Plan") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::group_by(destination, budgetYear) |>
+    dplyr::summarise(donors = list(unique(donor)), .groups = "drop") |>
+    dplyr::arrange(destination, budgetYear) |>
+    dplyr::group_by(destination) |>
+    dplyr::mutate( 
+      prev_donors = dplyr::lag(donors),
+      retained = purrr::map2_dbl(donors, prev_donors, 
+                                 ~ if (is.null(.y)) 0 else 
+                                   length(intersect(.x, .y)) / length(.y))
+    ) |>
+    dplyr::summarise(Destination_Donor_Retention_Index = mean(retained,
+                                                              na.rm = TRUE))
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, 
+                                                       df, by = "destination")
+  return(df)
+}
+
+```
+  
+```{r example-indicator_destination_donor_retention}
+destination <- indicator_destination_donor_retention(flows)
+#table(destination$Destination_Donor_Retention_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Donor_Retention_Index)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Donor Retention Index",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of donors who continue funding a destination year after year. 
+    Higher values indicate loyal donor bases and sustained engagement.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows retention rates. Higher values indicate stable donor 
+    relationships, lower values indicate high donor turnover and relationship
+    building needs.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Donor retention reduces transaction costs, builds contextual knowledge, 
+    and enables more effective long-term partnerships in complex crises.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_donor_retention}
+test_that("indicator_destination_donor_retention works", {
+  expect_true(inherits(indicator_destination_donor_retention, "function")) 
+})
+```
+  
+
+## indicator_destination_funding_diversity
+
+  
+```{r function-indicator_destination_funding_diversity}
+#' Destination-Focused: Funding Diversity Index
+#'
+#' Measures how diversified each destination's funding base is across donors
+#' using Shannon entropy of `amountUSD` distribution.
+#' 
+#' Goal: Measures how many donors contribute to each destination 
+#' — higher = more diverse and resilient funding base.
+#'
+#' @param flows A dataframe including `sourceObjects`, `destinationObjects`, 
+#' and `amountUSD`.
+#' @param destinations_df (optional) A dataframe with destination names to
+#'  merge results with.
+#'
+#' @return A tibble with `destination` and `Destination_Funding_Diversity
+#' ` (0–1 scale).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_destination_funding_diversity <- function(flows, 
+                                                    destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::group_by(destination, donor) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::mutate(share = total / sum(total, na.rm = TRUE)) |>
+    dplyr::summarise(
+      entropy = -sum(share * log(share), na.rm = TRUE),
+      Destination_Funding_Diversity = entropy / log(dplyr::n())
+    ) |>
+    dplyr::mutate(Destination_Funding_Diversity = pmin(Destination_Funding_Diversity, 1))
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, df, 
+                                                       by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_funding_diversity}
+destination <- indicator_destination_funding_diversity(flows)
+#table(destination$Destination_Funding_Diversity)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Funding_Diversity)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Funding Diversity",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Shannon entropy-based measure of funding distribution across donors 
+    (0=single donor dominance, 1=perfect diversity across many donors).", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows diversity levels. Higher values indicate resilient funding
+    ecosystems, lower values indicate concentration risks and vulnerability.",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Diverse funding bases protect against individual donor withdrawals and
+    enable more balanced response coordination across multiple priorities.", 
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_funding_diversity}
+test_that("indicator_destination_funding_diversity works", {
+  expect_true(inherits(indicator_destination_funding_diversity, "function")) 
+})
+```
+      
+
+## indicator_destination_funding_volatility
+
+  
+```{r function-indicator_destination_funding_volatility}
+#' Destination-Focused: Funding Volatility Index
+#'
+#' Calculates volatility in funding for each destination across `budgetYear`,
+#' using the coefficient of variation (CV) of annual totals.
+#' 
+#' Goal: Quantifies year-to-year variability in funding amounts for each 
+#' destination.
+#'
+#' @param flows A dataframe including `destinationObjects`, `budgetYear`, 
+#' and `amountUSD`.
+#' @param destinations_df (optional) A dataframe with destination names to 
+#' merge results with.
+#'
+#' @return A tibble with `destination` and `Destination_Funding_Volatility`
+#'  (0–1, where 1 = stable).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_destination_funding_volatility <- function(flows, 
+                                                     destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, budgetYear, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(destination, budgetYear) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::summarise(
+      mean_amt = mean(total, na.rm = TRUE),
+      sd_amt = sd(total, na.rm = TRUE),
+      cv = sd_amt / mean_amt,
+      Destination_Funding_Volatility = 1 - pmin(cv, 1)
+    )
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, df,
+                                                       by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_funding_volatility}
+destination <-indicator_destination_funding_volatility(flows)
+#table(destination$Destination_Funding_Volatility)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Funding_Volatility)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Funding Volatility",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "1 minus coefficient of variation of annual funding (0=highly volatile,
+    1=perfectly stable). Inverse measure of year-to-year funding
+    unpredictability.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows volatility patterns. Higher values enable predictable 
+    programming, lower values indicate disruptive funding fluctuations.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Funding volatility disrupts staffing, procurement, and program continuity, 
+    reducing operational efficiency and response effectiveness.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_funding_volatility}
+test_that("indicator_destination_funding_volatility works", {
+  expect_true(inherits(indicator_destination_funding_volatility, "function")) 
+})
+```
+  
+
+
+## indicator_destination_dependency
+
+  
+```{r function-indicator_destination_dependency}
+#' Destination-Focused: Dependency Index
+#'
+#' Calculates the share of a destination's total funding that comes
+#' from its single largest donor.
+#' 
+#' Goal: Measures reliance on the top donor — i.e., the share of total funding
+#'  coming from the largest donor.
+#'
+#' @param flows A dataframe including `sourceObjects`, `destinationObjects`,
+#'  and `amountUSD`.
+#' @param destinations_df (optional) A dataframe with destination names to 
+#' merge results with.
+#'
+#' @return A tibble with `destination` and `Destination_Dependency_Index`
+#'  (0–1, higher = more dependent).
+#' @importFrom dplyr filter group_by summarise mutate rename slice_max left_join
+#' @export
+indicator_destination_dependency <- function(flows, destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(sourceObjects, destinationObjects, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::group_by(destination, donor) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop_last") |>
+    dplyr::summarise(
+      top_share = max(total, na.rm = TRUE) / sum(total, na.rm = TRUE),
+      Destination_Dependency_Index = top_share
+    )
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df,
+                                                       df, by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_dependency}
+destination <-indicator_destination_dependency(flows)
+#table(destination$Destination_Dependency_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Dependency_Index)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Dependency Index",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Share of total funding from largest single donor (0-1). Higher values 
+    indicate heavy reliance on one donor, creating vulnerability.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows dependency levels. Values near 1 indicate high-risk 
+    single-donor dependencies requiring diversification strategies.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Single-donor dependency creates systemic risk - if that donor changes 
+    priorities, entire crisis responses can be jeopardized.", "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+  
+```{r tests-indicator_destination_dependency}
+test_that("indicator_destination_dependency works", {
+  expect_true(inherits(indicator_destination_dependency, "function")) 
+})
+```
+  
+## indicator_destination_modality_balance
+
+```{r function-indicator_destination_modality_balance}
+#' Destination-Focused: Modality Balance
+#'
+#' Calculates the share of cash or voucher-based programming (CTP)
+#' relative to all modalities within each destination.
+#' 
+#' Goal: Measures the balance between cash-based programming and traditional 
+#' modalities, based on the method variable.
+#'
+#' @param flows A dataframe including `destinationObjects`, `method`, 
+#' and `amountUSD`.
+#' @param destinations_df (optional) A dataframe with destination names 
+#' to merge results with.
+#'
+#' @return A tibble with `destination` and `Destination_Modality_Balance` 
+#' (0–1 share of CTP).
+#' @importFrom dplyr filter group_by summarise mutate rename left_join
+#' @export
+indicator_destination_modality_balance <- function(flows, 
+                                                   destinations_df = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  
+  df <- flows |>
+    dplyr::select(destinationObjects, method, amountUSD) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c("Location")) |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    dplyr::group_by(destination, method) |>
+    dplyr::summarise(total = sum(amountUSD, na.rm = TRUE),
+                     .groups = "drop_last") |>
+    dplyr::mutate(
+      Destination_Modality_Balance = ifelse(
+        method %in% c("Cash transfer programming (CTP)"),
+        total, 0
+      )
+    ) |>
+    dplyr::summarise(
+      Destination_Modality_Balance = sum(Destination_Modality_Balance,
+                                         na.rm = TRUE) /
+        sum(total, na.rm = TRUE)
+    )
+  
+  if (!is.null(destinations_df)) df <-dplyr::left_join(destinations_df, df, 
+                                                       by = "destination")
+  return(df)
+}
+```
+  
+```{r example-indicator_destination_modality_balance}
+destination <- indicator_destination_modality_balance(flows)
+#table(destination$Destination_Modality_Balance)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Modality_Balance)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Modality Balance",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Share of cash-based programming (CTP) relative to all modalities (0-1).
+    Higher values indicate greater cash modality utilization.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows CTP adoption across destinations. Most destinations cluster
+    near zero, indicating traditional in-kind programming dominance.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Appropriate modality balance ensures efficient, dignified assistance while
+    maintaining essential in-kind support where markets are non-functional.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+```
+
+```{r tests-indicator_destination_modality_balance}
+test_that("indicator_destination_modality_balance works", {
+  expect_true(inherits(indicator_destination_modality_balance, "function")) 
+})
+```
+  
+
+
+
+
+
+
+
+  
+<!--
+# There can be development actions
+
+Create a chunk with 'development' actions
+
+- The chunk needs to be named `development` or `dev`
+- It contains functions that are used for package development only
+- Note that you may want to store most of these functions in the 0-dev_history.Rmd file
+
+These are only included in the present flat template file, their content will not be part of the package anywhere else.
+-->
+
+```{r development-inflate, eval=FALSE}
+# Keep eval=FALSE to avoid infinite loop in case you hit the knit button
+# Execute in the console directly
+
+#remotes::install_github("thinkr-open/checkhelper")
+# checkhelper::print_globals()
+fusen::inflate(flat_file = "dev/flat_dev_2_indicator.Rmd", vignette_name = "2-Indicators")
+```
+
+

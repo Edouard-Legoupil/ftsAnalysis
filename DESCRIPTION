@@ -1,0 +1,41 @@
+Package: ftsAnalysis
+Title: Build Analysis from OCHA Finantial Tracking Service
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Edouard", "Legoupil", , "legoupil@unhcr.org", role = c("aut", "cre")),
+    person(, "UNHCR", role = "cph")
+  )
+Description: Generate Metrics, Index, Analysis and Visualisation to
+    understand donors behavior.
+License: MIT + file LICENSE
+Depends: 
+    R (>= 3.5)
+Imports: 
+    data.table,
+    dplyr,
+    ellmer,
+    ggplot2,
+    httr,
+    jsonlite,
+    lubridate,
+    purrr,
+    scales,
+    stats,
+    stringi,
+    stringr,
+    tibble,
+    tidyr,
+    unhcrthemes
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat,
+    viridis
+VignetteBuilder: 
+    knitr
+Config/fusen/version: 0.7.2
+Config/Needs/website: unhcr-dataviz/unhcrtemplate
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

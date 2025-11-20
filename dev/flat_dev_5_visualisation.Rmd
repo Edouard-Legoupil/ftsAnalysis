@@ -1,0 +1,1021 @@
+---
+title: "flat_skeleton.Rmd empty"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r development, include=FALSE}
+library(testthat)
+```
+
+```{r development-load}
+# Load already included functions if relevant
+pkgload::load_all(export_all = FALSE)
+```
+
+# generate_plot_story
+
+```{r function-generate_plot_story}
+#' Generate Humanitarian Data Story from ggplot
+#'
+#' This function takes a ggplot2 object and generates a storytelling narrative
+#' focused on humanitarian insights. It uses the \{ellmer\} package to call
+#' a large language model from a supported provider.
+#'
+#' The narrative can be used as a full‑text explanation or a concise subtitle
+#' for plots. The LLM has access to the plot’s data (truncated for efficiency),
+#' title, subtitle, and caption. Both provider and model can be chosen explicitly
+#' or detected automatically based on which API key environment variable is set.
+#'
+#' Setup:
+#' 1. Install \{ellmer\}: `install.packages("ellmer")`
+#' 2. Use Ollama or Set your API key in your environment, for example:
+#'    `Sys.setenv(OPENAI_API_KEY = "<YOUR_OPENAI_KEY>")`
+#'    `Sys.setenv(GEMINI_API_KEY = "<YOUR_GOOGLE_GEMINI_KEY>")`
+#'    `Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")`
+#'
+#' @param plot A `ggplot` object from ggplot2.
+#' @param max_tokens Maximum number of tokens (approximate) 
+#' for the narrative (default = 30).
+#' @param provider Optional character string specifying the provider. Options 
+#' include:
+#'   `"openai"`, `"gemini"`, `"anthropic"`, `"ollama"`. If `NULL`, 
+#'   auto-detect from environment keys.
+#' @param model Optional character string specifying the model name. If `NULL`,
+#'  a default model for the chosen provider will be used.
+#'
+#' @return A character string containing a storytelling narrative focused on
+#'  humanitarian data.
+#'
+#' @importFrom ggplot2 ggplot_build
+#' @importFrom dplyr mutate mutate_if select
+#' @importFrom stringr str_c str_to_lower
+#' @importFrom ellmer chat_openai chat_google_gemini chat_anthropic chat_ollama
+#' @export
+generate_plot_story <- function(plot, 
+                                max_tokens = 30,
+                                provider = NULL,
+                                model = NULL) {
+  
+  # Extract plot data (first layer) and truncate
+  plot_data <- ggplot2::ggplot_build(plot)$data[[1]] |>
+    dplyr::mutate_if(is.numeric, round, 2) |>
+    head(30)
+  plot_data_text <- capture.output(print(plot_data))
+  
+  # Extract title, subtitle, caption
+  labels <- plot$labels
+  title    <- if (!is.null(labels$title))    labels$title    else ""
+  subtitle <- if (!is.null(labels$subtitle)) labels$subtitle else ""
+  caption  <- if (!is.null(labels$caption))  labels$caption  else ""
+  
+  # Detect geoms used
+  geoms <- unique(sapply(plot$layers, function(layer) class(layer$geom)[1]))
+  geoms_text <- paste(geoms, collapse = ", ")
+  
+  # Build prompt
+  system_prompt <- paste0(
+    "You are a humanitarian data storytelling assistant. ",
+    "Create a clear, compelling narrative highlighting humanitarian insights
+    from this visualization."
+  )
+  
+  prompt <- paste0(
+    "Title: ",    title,    "\n",
+    "Subtitle: ", subtitle, "\n",
+    "Caption: ",  caption,  "\n\n",
+    "Data (first 30 rows):\n", paste(plot_data_text, collapse = "\n"),
+    "Consider the type of plot geoms used: ", geoms_text, ".",
+    "\n\nWrite a story in plain English, up to about ", max_tokens, " tokens."
+  )
+  
+  # Auto-detect provider if not specified
+  if (is.null(provider)) {
+    if (!is.na(Sys.getenv("OPENAI_API_KEY", unset = NA_character_))) {
+      provider <- "openai"
+    } else if (!is.na(Sys.getenv("GEMINI_API_KEY", unset = NA_character_))) {
+      provider <- "gemini"
+    } else if (!is.na(Sys.getenv("ANTHROPIC_API_KEY", unset = NA_character_))) {
+      provider <- "anthropic"
+    } else {
+      stop("No supported API key found. Set OPENAI_API_KEY, GEMINI_API_KEY,
+           ANTHROPIC_API_KEY, or install and set it to a local OLLAMA")
+    }
+  }
+  
+  provider <- tolower(provider)
+  
+  # Set default models if not provided
+  if (is.null(model)) {
+    model <- switch(
+      provider,
+      openai = "gpt-4o-mini",
+      gemini = "gemini-2.5-flash",
+      anthropic = "claude-sonnet-4",
+      ollama = "phi3:latest",
+      stop("Invalid provider specified. Choose from 
+           'openai', 'gemini', 'anthropic', 'ollama'.")
+    )
+  }
+  
+  # Initialize chat object
+  chat <- switch(
+    provider,
+    openai = ellmer::chat_openai(model = model, system_prompt = system_prompt),
+    gemini = ellmer::chat_google_gemini(system_prompt = system_prompt,
+                base_url = "https://generativelanguage.googleapis.com/v1beta/",
+                                        api_key = Sys.getenv("GEMINI_API_KEY")),
+    anthropic = ellmer::chat_anthropic(model = model,
+                                       system_prompt = system_prompt),
+    ollama = ellmer::chat_ollama(model = model, 
+                                 system_prompt = system_prompt),
+    stop("Invalid provider specified. Choose from
+         'openai', 'gemini', 'anthropic', 'ollama'.")
+  )
+  
+  # Send prompt and get response
+  response <- chat$chat(prompt)
+  
+  return(response)
+}
+
+```
+  
+```{r example-generate_plot_story}
+
+library(ggplot2)
+p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+   geom_point() +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+   labs(title = "Vehicle Efficiency",
+        subtitle = "Fuel consumption vs weight",
+        caption = "Source: mtcars dataset")
+
+story <- generate_plot_story(p)
+cat(story)
+# To use as subtitle:
+p + ggplot2::labs(subtitle = story)
+```
+  
+```{r tests-generate_plot_story}
+test_that("generate_plot_story works", {
+  expect_true(inherits(generate_plot_story, "function")) 
+})
+```
+
+# plot_donor_funding_over_time
+
+```{r function-plot_donor_funding_over_time}
+#' Plot Donor Funding Over Time
+#'
+#' Visualizes the total funding provided by a given donor across budget years.
+#' Useful to track trends, identify peaks, and assess consistency.
+#'
+#' @param flows A dataframe of humanitarian funding flows (FTS format).
+#' @param donor_name The name of the donor organization to filter.
+#'
+#' @return A ggplot object showing donor funding trends over budget years.
+#' @importFrom ggplot2 ggplot aes geom_col geom_line geom_point labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_donor_funding_over_time <- function(flows, donor_name) {
+  
+  df <- flows |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization",
+                  sourceObjects_name == donor_name) |>
+    dplyr::group_by(budgetYear) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = as.integer(budgetYear), y = total_usd)) +
+    ggplot2::geom_col(fill = "steelblue") +
+    ggplot2::geom_line(group = 1, color = "darkred", size = 1) +
+    ggplot2::geom_point(color = "darkred", size = 2) +
+    ggplot2::labs(
+      title = paste0("Funding Trends for Donor: ", donor_name),
+      subtitle = "Total funding per budget year",
+      x = "Budget Year",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+
+```
+  
+```{r example-plot_donor_funding_over_time}
+p <- plot_donor_funding_over_time(flows, donor_name= "Spain, Government of")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+print(p + ggplot2::labs(subtitle = dubbed))
+
+```
+  
+```{r tests-plot_donor_funding_over_time}
+test_that("plot_donor_funding_over_time works", {
+  expect_true(inherits(plot_donor_funding_over_time, "function")) 
+})
+```
+
+# plot_donor_earmarking
+
+```{r function-plot_donor_earmarking}
+#' Plot Donor Funding by Earmarking Type
+#'
+#' Visualizes the proportion of funding per earmarking type 
+#' (Unearmarked, Softly earmarked, etc.)
+#' for a selected donor. Helps understand donor flexibility and restrictions.
+#'
+#' @param flows A dataframe of humanitarian funding flows (FTS format).
+#' @param donor_name Donor organization name to filter.
+#'
+#' @return A ggplot object showing donor funding by earmarking type.
+#' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_donor_earmarking <- function(flows, donor_name) {
+  
+  df <- flows |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization", 
+                  sourceObjects_name == donor_name) |>
+    tidyr::unnest(grandBargainEarmarkingType, names_repair = "unique") |>
+    dplyr::group_by(grandBargainEarmarkingType) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = grandBargainEarmarkingType, 
+                                   y = total_usd)) +
+    ggplot2::geom_col(fill = "dodgerblue") +
+    ggplot2::labs(
+      title = paste0("Funding by Earmarking Type for Donor: ", donor_name),
+      subtitle = "Distribution of funding across earmarking types",
+      x = "Earmarking Type",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_donor_earmarking}
+p <- plot_donor_earmarking(flows, donor_name= "Spain, Government of")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_donor_earmarking}
+test_that("plot_donor_earmarking works", {
+  expect_true(inherits(plot_donor_earmarking, "function")) 
+})
+```
+
+
+# plot_donor_flowtype
+
+```{r function-plot_donor_flowtype}
+#' Plot Donor Flow Type Distribution
+#'
+#' Shows the distribution of flow types 
+#' (Standard, Parked, Pass-through, Carryover)
+#' for a selected donor. Useful for understanding donor engagement complexity.
+#'
+#' @param flows FTS flows dataframe.
+#' @param donor_name Donor organization name.
+#'
+#' @return A ggplot object showing flow type proportions.
+#' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_donor_flowtype <- function(flows, donor_name) {
+  
+  df <- flows |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization",
+                  sourceObjects_name == donor_name) |>
+    dplyr::group_by(flowType) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = flowType, y = total_usd)) +
+    ggplot2::geom_col(fill = "purple") +
+    ggplot2::labs(
+      title = paste0("Flow Type Distribution for Donor: ", donor_name),
+      subtitle = "Funding by flow type",
+      x = "Flow Type",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_donor_flowtype}
+p <- plot_donor_flowtype(flows, donor_name= "Spain, Government of")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_donor_flowtype}
+test_that("plot_donor_flowtype works", {
+  expect_true(inherits(plot_donor_flowtype, "function")) 
+})
+```
+
+
+# plot_donor_cluster_coverage
+
+```{r function-plot_donor_cluster_coverage}
+#' Plot Donor Cluster Coverage
+#'
+#' Visualizes which humanitarian clusters each donor supports, using the number of
+#' flows per cluster. Useful to understand donor focus and alignment with 
+#' sector priorities.
+#'
+#' @param flows FTS flows dataframe.
+#' @param donor_name Donor organization name.
+#'
+#' @return A ggplot object showing donor funding coverage across clusters.
+#' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_donor_cluster_coverage <- function(flows, donor_name) {
+  
+  df <- flows |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization", 
+                  sourceObjects_name == donor_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type %in% c( "GlobalCluster")) |>
+    dplyr::rename(name = destinationObjects_name ) |>
+    dplyr::group_by(name) |>
+    dplyr::summarise(flows_per_cluster = dplyr::n()) |>
+    dplyr::ungroup()
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = reorder(factor(name), flows_per_cluster),
+                                   y = flows_per_cluster)) +
+    ggplot2::geom_col() +
+    ggplot2::coord_flip()+
+    ggplot2::labs(
+      title = paste0("Cluster Coverage by Donor: ", donor_name),
+      subtitle = "Number of flows per humanitarian cluster",
+      x = "Cluster",
+      y = "Number of Flows",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X", axis = "X", axis_title = FALSE) 
+}
+```
+  
+```{r example-plot_donor_cluster_coverage}
+p <- plot_donor_cluster_coverage(flows, donor_name= "Spain, Government of")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_donor_cluster_coverage}
+test_that("plot_donor_cluster_coverage works", {
+  expect_true(inherits(plot_donor_cluster_coverage, "function")) 
+})
+```
+
+# plot_recipient_funding_composition
+
+```{r function-plot_recipient_funding_composition}
+#' Plot Recipient Funding Composition by Donor
+#'
+#' Shows how a specific recipient organization’s funding is distributed across 
+#' donors.
+#' Useful for assessing donor diversification and reliance.
+#'
+#' @param flows A dataframe of humanitarian funding flows (FTS format).
+#' @param recipient_name The name of the recipient organization to filter.
+#'
+#' @return A ggplot object showing donor shares of recipient funding.
+#' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_recipient_funding_composition <- function(flows, recipient_name) {
+  
+  df <- flows |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization", 
+                  destinationObjects_name == recipient_name) |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::group_by(sourceObjects_name) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = reorder(sourceObjects_name, total_usd),
+                                   y = total_usd)) +
+    ggplot2::geom_col(fill = "forestgreen") +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste0("Funding Composition for Recipient: ", recipient_name),
+      subtitle = "Funding received by donor organization",
+      x = "Donor",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_recipient_funding_composition}
+p <- plot_recipient_funding_composition(flows, 
+              recipient_name = "United Nations High Commissioner for Refugees")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_recipient_funding_composition}
+test_that("plot_recipient_funding_composition works", {
+  expect_true(inherits(plot_recipient_funding_composition, "function")) 
+})
+```
+
+# plot_recipient_grandbargain
+
+```{r function-plot_recipient_grandbargain}
+#' Plot Grand Bargain Earmarking by Recipient
+#'
+#' Visualizes the proportion of funding earmarked under the Grand Bargain 
+#' commitments for each recipient. Helps to assess how much funding aligns 
+#' with international humanitarian reform commitments.
+#'
+#' @param flows FTS flows dataframe.
+#' @param recipient_name Recipient organization name.
+#'
+#' @return A ggplot object showing the split of earmarked vs non-earmarked 
+#' funding.
+#' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_recipient_grandbargain <- function(flows, recipient_name) {
+  
+  df <- flows |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization", 
+                  destinationObjects_name == recipient_name) |>
+    tidyr::unnest(grandBargainEarmarkingType, names_repair = "unique") |>
+    dplyr::group_by(grandBargainEarmarkingType) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE)) |>
+    dplyr::mutate(grandBargainEarmarkingType = factor(grandBargainEarmarkingType,
+        levels= c("unearmarked", "softly earmarked", 
+                  "earmarked", "tightly earmarked")))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = grandBargainEarmarkingType, 
+                                   y = total_usd)) +
+    ggplot2::geom_col() +
+    ggplot2::coord_flip() +
+    ggplot2::scale_y_continuous(
+      labels = scales::label_number(scale_cut = scales::cut_short_scale())
+    ) +
+    ggplot2::labs(
+      title = paste0("Recipient Grand Bargain Earmarking for ", recipient_name),
+      subtitle = "Distribution of earmarked vs non-earmarked funding",
+      x = "Earmarking Type",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_recipient_grandbargain}
+p <- plot_recipient_grandbargain(flows,
+          recipient_name = "United Nations High Commissioner for Refugees")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_recipient_grandbargain}
+test_that("plot_recipient_grandbargain works", {
+  expect_true(inherits(plot_recipient_grandbargain, "function")) 
+})
+```
+  
+# plot_recipient_cofunding
+
+```{r function-plot_recipient_cofunding}
+#' Plot Recipient Co-Funding Rate
+#'
+#' Shows how often a recipient shares funding with other recipients for 
+#' a given donor.
+#' Useful to see multi-recipient funding trends.
+#'
+#' @param flows A dataframe of FTS funding flows.
+#' @param recipient_name Recipient organization name to filter.
+#'
+#' @return A ggplot object with co-funding rates.
+#' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
+#' @importFrom dplyr filter group_by summarise n_distinct mutate
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_recipient_cofunding <- function(flows, recipient_name) {
+  
+  df <- flows |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization", 
+                  destinationObjects_name == recipient_name) |>
+    dplyr::group_by(id) |>
+    dplyr::summarise(recipient_count = dplyr::n_distinct(destinationObjects_name),
+                     .groups = "drop") |>
+    dplyr::mutate(shared = recipient_count > 1)
+  
+  cofunding_rate <- mean(df$shared, na.rm = TRUE)
+  
+  ggplot2::ggplot(data.frame(shared = c(cofunding_rate, 1 - cofunding_rate),
+                             category = c("Shared", "Sole")), 
+                  ggplot2::aes(x = category, y = shared)) +
+    ggplot2::geom_col() +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste0("Co-Funding Rate for Recipient: ", recipient_name),
+      subtitle = "Proportion of multi-recipient funding",
+      x = "",
+      y = "Proportion",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X", axis = "X", axis_title = FALSE) 
+}
+```
+  
+```{r example-plot_recipient_cofunding}
+p <- plot_recipient_cofunding(flows, 
+              recipient_name = "United Nations High Commissioner for Refugees")
+
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_recipient_cofunding}
+test_that("plot_recipient_cofunding works", {
+  expect_true(inherits(plot_recipient_cofunding, "function")) 
+})
+```
+
+# plot_recipient_contribution_type
+
+```{r function-plot_recipient_contribution_type}
+#' Plot Recipient Funding by Contribution Type
+#'
+#' Visualizes the split of funding received by a recipient based on 
+#' contribution type
+#' (e.g., financial or in-kind). Useful to assess funding modality diversity.
+#'
+#' @param flows FTS flows dataframe.
+#' @param recipient_name Recipient organization name.
+#'
+#' @return A ggplot object showing funding by contribution type.
+#' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
+#' @importFrom dplyr filter group_by summarise n_distinct mutate
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_recipient_contribution_type <- function(flows, recipient_name) {
+  
+  df <- flows |>
+    tidyr::unnest(destinationObjects, 
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization",
+                  destinationObjects_name == recipient_name) |>
+    dplyr::group_by(contributionType) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = contributionType, y = total_usd)) +
+    ggplot2::geom_col() +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste0("Funding by Contribution Type for Recipient: ",
+                     recipient_name),
+      subtitle = "Distribution of financial vs in-kind contributions",
+      x = "Contribution Type",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_recipient_contribution_type}
+p <- plot_recipient_contribution_type(flows, 
+                recipient_name = "United Nations High Commissioner for Refugees")
+
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_recipient_contribution_type}
+test_that("plot_recipient_contribution_type works", {
+  expect_true(inherits(plot_recipient_contribution_type, "function")) 
+})
+```
+
+# plot_location_funding_destination
+
+```{r function-plot_location_funding_destination}
+#' Plot Funding by Destination Location
+#'
+#' Visualizes total humanitarian funding directed to a given destination location.
+#' Useful to identify funding hotspots and compare regions.
+#'
+#' @param flows A dataframe of humanitarian funding flows (FTS format).
+#' @param location_name The name of the destination location to filter.
+#'
+#' @return A ggplot object showing total funding per donor for the location.
+#' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_location_funding_destination <- function(flows, location_name) {
+  df <- flows |>
+    tidyr::unnest(destinationObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location",
+                  destinationObjects_name == location_name) |>
+    tidyr::unnest(sourceObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::group_by(sourceObjects_name) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = reorder(sourceObjects_name, total_usd),
+                                   y = total_usd)) +
+    ggplot2::geom_col(fill = "darkorange") +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste0("Funding Origin for ", location_name),
+      subtitle = "Funding contributed by each donor",
+      x = "Donor",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X",
+                             axis = "Y",
+                             axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_location_funding_destination}
+p <- plot_location_funding_destination(flows, location_name= "Burundi")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_location_funding_destination}
+test_that("plot_location_funding_destination works", {
+  expect_true(inherits(plot_location_funding_destination, "function")) 
+})
+```
+
+# plot_location_funding_donor
+
+```{r function-plot_location_funding_donor}
+#' Plot Destination Funding by Donor
+#'
+#' Shows funding received at a location from multiple donors.
+#' Useful to identify funding hotspots or dependency.
+#'
+#' @param flows FTS flows dataframe.
+#' @param location_name Destination location name.
+#'
+#' @return A ggplot object showing total funding per donor for the location.
+#' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @importFrom tidyr unnest
+#' @import unhcrthemes
+#' @export
+plot_location_funding_donor <- function(flows, location_name) {
+  df <- flows |>
+    tidyr::unnest(destinationObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location",
+                  destinationObjects_name == location_name) |>
+    tidyr::unnest(sourceObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::group_by(sourceObjects_name) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE))
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = reorder(sourceObjects_name, total_usd),
+                                   y = total_usd)) +
+    ggplot2::geom_col(fill = "darkorange") +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste0("Funding for Destination: ", location_name),
+      subtitle = "Funding contributed by each donor",
+      x = "Donor",
+      y = "Funding (USD)",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "X",
+                             axis = "Y",
+                             axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_location_funding_donor}
+p <- plot_location_funding_donor(flows, location_name= "Burundi")
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_location_funding_donor}
+test_that("plot_location_funding_donor works", {
+  expect_true(inherits(plot_location_funding_donor, "function")) 
+})
+```
+
+# plot_location_heatmap
+
+```{r function-plot_location_heatmap}
+#' Plot Top Donors Heatmap
+#'
+#' Visualizes the total funding from top donors to recipient organizations
+#' for a given location. Correctly handles deeply nested FTS destinationObjects.
+#'
+#' @param flows FTS flows dataframe
+#' @param location_name Name of the destination location to filter for
+#' @param top_n Number of top donors to display (default = 5)
+#'
+#' @return A ggplot heatmap
+#' @importFrom dplyr filter mutate group_by summarise slice_max ungroup select rename inner_join
+#' @importFrom tidyr unnest
+#' @importFrom stringi stri_enc_toutf8
+#' @importFrom purrr map map_df
+#' @export
+plot_location_heatmap <- function(flows, location_name, top_n = 5) {
+  
+  # ---- STEP 1: Expand nested destination objects ----
+  dest_expanded <- flows |>
+    dplyr::mutate(destinationObjects2 = destinationObjects) |>
+    tidyr::unnest(destinationObjects,
+                  names_repair = "unique",
+                  names_sep = "_")
+  
+  # ---- STEP 2: Filter for location (case-insensitive) ----
+  flows_loc <- dest_expanded |>
+    dplyr::filter(
+      destinationObjects_type == "Location",
+      tolower(destinationObjects_name) == tolower(location_name)
+    )
+  
+  if (nrow(flows_loc) == 0) {
+    warning(paste("No flows found for location:", location_name))
+    return(
+      ggplot2::ggplot() +
+        ggplot2::labs(title = paste("No data for", location_name))
+    )
+  }
+  
+  # ---- STEP 3: Expand donor and recipient orgs ----
+  donors_recipient_expanded <- flows_loc |>
+    tidyr::unnest(sourceObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    tidyr::unnest(destinationObjects2,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects2_type == "Organization")
+  
+  # ---- STEP 4: Aggregate donor → recipient totals ----
+  flow_data <- donors_recipient_expanded  |>
+    dplyr::mutate(
+      donor = stringi::stri_enc_toutf8(sourceObjects_name),
+      recipient = stringi::stri_enc_toutf8(destinationObjects2_name)
+    ) |>
+    dplyr::group_by(donor, recipient) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE), .groups = "drop")
+  
+  if (nrow(flow_data) == 0) {
+    warning("No Donor → Recipient organization flows for this location.")
+    return(ggplot2::ggplot() + ggplot2::labs(title = "No organization-level data"))
+  }
+  
+  # ---- STEP 5: Select Top N donors ----
+  top_donors <- flow_data |>
+    dplyr::group_by(donor) |>
+    dplyr::summarise(total = sum(total_usd), .groups = "drop") |>
+    dplyr::slice_max(total, n = top_n)
+  
+  df_plot <- top_donors |>
+    dplyr::inner_join(flow_data, by = "donor") |>
+    dplyr::mutate(
+      donor = stringr::str_wrap(donor, width = 40),
+      recipient = stringr::str_wrap(recipient, width = 40)
+    )
+  
+  # ---- STEP 6: Plot ----
+  p <- ggplot2::ggplot(
+    df_plot,
+    ggplot2::aes(y = recipient, x = donor, fill = total_usd)
+  ) +
+    
+    ggplot2::geom_tile(color = "white", linewidth = 0.3) +
+    
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = scales::label_number(
+          scale_cut = scales::cut_short_scale(),
+          accuracy = 0.1
+        )(total_usd),
+        color = total_usd
+      ),
+      size = 3.5, fontface = "bold"
+    ) +
+    
+    ggplot2::scale_fill_viridis_c(
+      option = "plasma",
+      na.value = "grey85",
+      labels = scales::label_number(accuracy = 0.1),
+      name = "Funding (USD)"
+    ) +
+    
+    ggplot2::scale_color_gradient(
+      guide = "none",
+      high= "black",
+      low  = "white"
+    ) +
+    
+    unhcrthemes::theme_unhcr(
+      grid = TRUE,
+      axis = FALSE,
+      legend = FALSE,
+      axis_title = FALSE
+    ) +
+    
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    ) +
+    
+    ggplot2::labs(
+      title = paste0("Top ", top_n, " Donors → Recipients for ", location_name),
+      subtitle = "Organization-level flows extracted from FTS nested structures",
+      x = "Recipient Organization",
+      y = "Donor Organization",
+      caption = "Source: UN OCHA FTS API"
+    )
+  
+  return(p)
+}
+```
+  
+```{r example-plot_location_heatmap}
+p <- plot_location_heatmap(flows, location_name= "Burundi", top_n = 5)
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_location_heatmap}
+test_that("plot_location_heatmap works", {
+  expect_true(inherits(plot_location_heatmap, "function")) 
+})
+```
+
+
+
+# plot_funding_status_timeline
+
+```{r function-plot_funding_status_timeline}
+#' Plot Funding Timeline by Status
+#'
+#' Shows the evolution of funding amounts by status (pledge, commitment, paid)
+#' across budget years. Useful for tracking donor disbursement progress.
+#'
+#' @param flows FTS flows dataframe.
+#'
+#' @return A ggplot object showing funding over time by status.
+#' @importFrom ggplot2 ggplot aes geom_line geom_point labs  scale_y_continuous
+#' @importFrom dplyr  filter group_by summarise
+#' @import unhcrthemes
+#' @export
+plot_funding_status_timeline <- function(flows) {
+  
+  df <- flows |>
+    dplyr::group_by(budgetYear, status) |>
+    dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE), .groups = "drop")
+  
+  ggplot2::ggplot(df, ggplot2::aes(x = as.integer(budgetYear), 
+                                   y = total_usd, 
+                                   color = status)) +
+    ggplot2::geom_line(size = 1) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::labs(
+      title = "Funding Timeline by Status",
+      subtitle = "Evolution of pledge, commitment, and paid funding",
+      x = "Budget Year",
+      y = "Funding (USD)",
+      color = "Status",
+      caption = "Source: OCHA Finantial Tracking Service (Flow API)"
+    ) +
+    unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+    ggplot2::scale_y_continuous(labels = scales::comma)
+}
+```
+  
+```{r example-plot_funding_status_timeline}
+p <- plot_funding_status_timeline(flows)
+
+# getting LLm story
+story <- generate_plot_story(p, max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p)
+p + ggplot2::labs(subtitle = dubbed)
+```
+  
+```{r tests-plot_funding_status_timeline}
+test_that("plot_funding_status_timeline works", {
+  expect_true(inherits(plot_funding_status_timeline, "function")) 
+})
+```
+
+
+```{r development-inflate, eval=FALSE}
+# Run but keep eval=FALSE to avoid infinite loop
+# Execute in the console directly
+fusen::inflate(flat_file = "dev/flat_dev_5_visualisation.Rmd", vignette_name = "5-Visualisation")
+```
+

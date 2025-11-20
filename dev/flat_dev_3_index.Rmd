@@ -1,0 +1,683 @@
+---
+title: "Composite Index Documentation"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- Run this 'development' chunk -->
+<!-- Store every call to library() that you need to explore your functions -->
+
+```{r development, include=FALSE}
+library(testthat)
+```
+
+<!--
+ You need to run the 'description' chunk in the '0-dev_history.Rmd' file before continuing your code there.
+
+If it is the first time you use {fusen}, after 'description', you can directly run the last chunk of the present file with inflate() inside.
+--> 
+
+```{r development-load}
+# Load already included functions if relevant
+pkgload::load_all(export_all = FALSE)
+```
+
+
+# compile_donor_recipient_metrics
+
+  
+```{r function-compile_donor_recipient_metrics}
+#' Compile Donor–Recipient Metrics
+#'
+#' This function computes and compiles all donor→recipient humanitarian financing
+#' indicators into a single harmonized dataset.  
+#' It serves as the main data preparation step before building a
+#' Donor–Recipient Composite Indicator (COIN).
+#'
+#' ## Included Indicators
+#'
+#' | Indicator | Description | Interpretation |
+#' |----------|-------------|----------------|
+#' | `Sector_Alignment` | How closely donor allocations match recipient sector capacity/needs | Higher = better sectoral alignment |
+#' | `Risk_Tolerance` | Share of donor funding going to high-risk locations or new organizations | Higher = more risk-tolerant donor |
+#' | `DonorRecipient_Stability_Index` | Fraction of years a donor consistently funded the recipient | Higher = long-term commitment |
+#'
+#'
+#' ## Purpose
+#' This function consolidates all donor→recipient computations into a single table,
+#' enabling:
+#'
+#' * construction of a Donor–Recipient COIN (Composite Indicator)
+#' * performance dashboards
+#' * humanitarian partnership analysis
+#' * comparison of donor engagement patterns across organizations
+#'
+#'
+#' ## Parameters
+#' @param flows A dataframe containing raw FTS-style flows, minimally including:
+#'   `sourceObjects`, `destinationObjects`, `budgetYear`, `amountUSD`,
+#'   and fields needed for sector and risk indicators.
+#'
+#'
+#' @param recipient_name character vector of recipients to retain.
+#'
+#'
+#' ## Returns
+#' @return A tibble with all metrics
+#'
+#'
+#'
+#' @importFrom dplyr left_join filter rename select
+#' @export
+compile_donor_recipient_metrics <- function(
+  flows,
+  recipient_name = "United Nations High Commissioner for Refugees") {
+  
+  # --- Compute all donor→recipient indicators ---
+  
+  donors <- indicator_donor_funding_consistency(flows,
+                         donors)
+  donors <- indicator_donor_relationship_duration(flows, donors,
+                         donors)
+  donors <- indicator_donor_funding_growth(flows,
+                         donors)
+  donors <- indicator_donor_timing_consistency(flows,
+                         donors)
+  donors <- indicator_donor_systemic_concentration(flows,
+                         donors)
+  donors <- indicator_donor_knowledge_sharing_intensity(flows,
+                         donors)
+
+
+    sectors <- c(
+     "Nutrition", 
+     "Health", 
+     "Emergency Shelter and NFI", 
+     "Water Sanitation Hygiene",
+     "Food Security",
+     "Logistics", 
+     "Protection - Gender-Based Violence", 
+     "Protection - Child Protection",
+     "Protection",
+     "Multipurpose Cash", 
+     "Education",
+     "Multi-sector",
+     "Protection - Housing, Land and Property",
+     "Protection - Human Trafficking & Smuggling", 
+     "Coordination and support services",
+     "Camp Coordination / Management",
+     "Emergency Telecommunications", 
+     "Agriculture",
+     "Early Recovery",
+     "Protection - Mine Action", 
+     "Other"
+    )
+    
+    # Adjusted scores based on funding collapse and operational risk
+    
+    adjusted_scores <- c(
+      10,  # Nutrition: Life-saving and first-line response; malnutrition spikes in
+      #crises. Funding collapse means ration cuts, so priority remains highest.
+      9,   # Health: Essential for survival; clinics reverting to 1990s models 
+      #(minimal staff, basic meds). High priority to prevent mortality.
+      8,   # Emergency Shelter and NFI: Critical for displaced populations;
+      #exposure risk rises with underfunding. Still high but slightly below health/nutrition.
+      8,   # Water Sanitation Hygiene (WASH): Prevents disease outbreaks; 
+      #cholera risk escalates when systems fail. Needs strong prioritization.
+      7,   # Food Security: Linked to nutrition but broader (agriculture, livelihoods).
+      #Funding gaps mean rationing; still vital but slightly less than direct nutrition.
+      6,   # Logistics: Backbone for all sectors; underfunding reduces supply chain 
+      #resilience. Important but not life-saving on its own.
+      7,   # Protection - Gender-Based Violence: GBV spikes in fragile contexts; 
+      #services often first to be cut. Needs strong prioritization for dignity and safety.
+      6,   # Protection - Child Protection: Critical for safeguarding vulnerable
+      #children; funding collapse risks exploitation. Medium-high priority.
+      5,   # Protection (general): Important for rights and safety but less 
+      #immediately life-saving than GBV or child protection.
+      9,   # Multipurpose Cash: Severely underfunded (only ~20% coverage);
+      #key for dignity and flexibility. High priority to maintain household resilience.
+      8,   # Education: Collapsing (21% funded); long-term impact on recovery 
+      #and protection. Elevated priority despite being non-life-saving.
+      6,   # Multi-sector: Coordination across sectors matters, but direct impact 
+      # is less urgent than core life-saving interventions.
+      4,   # Protection - Housing, Land and Property: Important for durable
+      #solutions, but less urgent during acute collapse.
+      4,   # Protection - Human Trafficking & Smuggling: Serious risk but narrower
+      #scope; medium-low priority compared to GBV/child protection.
+      3,   # Coordination and support services: Necessary for system functioning,
+      # but deprioritized when survival sectors collapse.
+      3,   # Camp Coordination / Management: Important for organized response,
+      #but less critical than food, health, WASH.
+      3,   # Emergency Telecommunications: Enables operations but not directly
+      #life-saving; deprioritized under severe funding constraints.
+      5,   # Agriculture: Supports food security and recovery; medium priority 
+      #as immediate needs dominate.
+      8,   # Early Recovery: Only 17% funded; crucial for resilience and 
+      #preventing protracted crises. Elevated priority despite systemic collapse.
+      2,   # Protection - Mine Action: Important for safety but less urgent 
+      # than health/nutrition during acute funding collapse.
+      1    # Other: Catch-all category; lowest priority given resource scarcity.
+    )
+    sector_capacity <- tibble::tibble(
+      sector = sectors,
+      raw_score = adjusted_scores) |>
+      dplyr::mutate(
+        capacity_weight = raw_score / sum(raw_score)  # normalize to sum to 1
+      ) |>
+      dplyr::select(sector, capacity_weight)
+    
+    donors <- indicator_donor_sector_alignment(flows, sector_capacity,
+                         donors)
+    
+    
+    # High-visibility, acute crises get funded
+    high_visibility <- c(
+      "Ukraine", "Syrian Arab Republic", "Occupied Palestinian Territory",
+      "Sudan", "South Sudan", "Yemen", "Afghanistan", "Myanmar",
+      "Ethiopia", "Somalia", "Democratic Republic of the Congo",
+      "Central African Republic", "Haiti"
+    )
+
+
+  donors <- indicator_donor_geographic_alignment(flows, 
+                         priority_destinations = high_visibility,
+                         donors)
+  
+
+  ## Recipient focused
+  donors <-  indicator_donor_recipient_relationship_duration(flows,
+                         recipient_name,
+                         donors)
+  donors <-  indicator_donor_recipient_funding_growth(flows,
+                         recipient_name,
+                         donors)
+  donors <- indicator_donor_recipient_concentration(flows,
+                         recipient_name,
+                         donors)
+  donors <-  indicator_donor_recipient_trend(flows,
+                         recipient_name,
+                         donors)
+  donors <- indicator_donor_recipient_reciprocity(flows,
+                         recipient_name,
+                         donors)
+
+  return(donors)
+}
+```
+  
+```{r example-compile_donor_recipient_metrics}
+donor_recipient_metrics <- compile_donor_recipient_metrics(
+  flows,
+  recipient_name = "United Nations High Commissioner for Refugees")
+```
+  
+```{r tests-compile_donor_recipient_metrics}
+test_that("compile_donor_recipient_metrics works", {
+  expect_true(inherits(compile_donor_recipient_metrics, "function")) 
+})
+```
+  
+
+# build_donor_recipient_coin
+    
+
+  
+```{r function-build_donor_recipient_coin}
+#' Build Donor–Recipient COIN (Composite Indicator)
+#'
+#' This function constructs a composite indicator (COIN) that summarizes donor
+#' behaviour **as it relates to a specific recipient** (national NGO, INGO, UN agency,
+#' or pooled fund).  
+#'
+#' The index aggregates indicators into four thematic pillars:
+#' **(1) Flexibility, (2) Risk Tolerance, (3) Stability, (4) Localization & Predictability**.
+#'
+#' ## Indicator Structure Overview
+#'
+#' | Pillar                         | Indicator                            | Dir | Interpretation |
+#' |--------------------------------|----------------------------------------|-----|----------------|
+#' | **Flexibility**                | `earmarking_flexibility`              | +   | Higher means less earmarking and greater adaptability for the recipient. |
+#' | **Risk Tolerance**             | `risk_tolerance`                      | +   | Higher means the donor engages in high-risk areas or new partnerships. |
+#' | **Stability**                  | `donor_recipient_stability_index`     | +   | Higher reflects long-term engagement with fewer interruptions. |
+#' | **Localization & Predictability** | `local_actor_share`               | +   | Higher means a greater share of funding goes to local/national actors. |
+#' |                                | `multiyear_share`                     | +   | Higher means more predictable multi-year funding for the recipient. |
+#' |                                | `funding_volatility_cv`              | –   | Lower volatility indicates more predictable annual contributions. |
+#'
+#' **Direction (+/–)**:  
+#' + : higher values improve donor performance  
+#' – : lower values improve donor performance  
+#'
+#'
+#' ## Purpose
+#' This index allows humanitarian analysts to compare how donors behave when
+#' funding a given recipient, enabling evidence-based discussions about:
+#'
+#' * flexibility and adaptability of contributions  
+#' * risk appetite for high-risk operations  
+#' * historical consistency of support  
+#' * alignment with localization commitments  
+#' * adequacy of predictability for recipient planning  
+#'
+#' It is intended for dashboards, donor scorecards, partnership diagnostics,
+#' and humanitarian financing analyses.
+#'
+#'
+#' ## Parameters
+#' @param donor_recipient_metrics A data frame containing the calculated
+#'   donor→recipient indicators. 
+#' @param normalize Logical. Whether indicators should be normalized using
+#'   min–max normalization (default `TRUE`).
+#' @param aggregate Logical. Whether COINr should compute pillar scores and the
+#'   final composite index (default `TRUE`).
+#'
+#'
+#' @return A `coin` object from **COINr**, containing:
+#' * Raw indicators
+#' * Normalised indicators (if `normalize=TRUE`)
+#' * Aggregated pillar scores and final Donor–Recipient Index (if `aggregate=TRUE`)
+#'
+#' @importFrom dplyr filter mutate select
+#' @importFrom COINr new_coin Aggregate Normalise
+#'
+#' @export
+build_donor_recipient_coin <- function(donor_recipient_metrics,
+                                       recipient,
+                                       normalize = TRUE,
+                                       aggregate = TRUE) {
+  
+  # Filter the dataset for the requested recipient
+  donor_recipient_metrics <- donor_recipient_metrics %>%
+    dplyr::filter(recipient == !!recipient)
+  
+  # Prepare COINr standard format
+  coin_data <- donor_recipient_metrics %>%
+    dplyr::mutate(
+      uCode = make.names(donor),
+      uName = donor
+    ) %>%
+    dplyr::select(
+      uCode, uName,
+      earmarking_flexibility,
+      risk_tolerance,
+      donor_recipient_stability_index,
+      local_actor_share,
+      multiyear_share,
+      funding_volatility_cv
+    )
+  
+  # Metadata describing indicator hierarchy
+  iMeta <- data.frame(
+    Level = c(
+      3,        # Index
+      2, 2, 2, 2, # 4 pillars
+      1,        # Flexibility
+      1,        # Risk Tolerance
+      1,        # Stability
+      1, 1, 1   # Localization & Predictability
+    ),
+    iCode = c(
+      "DonorRecipientIndex",
+      "Flexibility", "RiskTolerance", "Stability", "LocalizationPredictability",
+      "earmarking_flexibility",
+      "risk_tolerance",
+      "donor_recipient_stability_index",
+      "local_actor_share", "multiyear_share", "funding_volatility_cv"
+    ),
+    Parent = c(
+      NA,
+      "DonorRecipientIndex", "DonorRecipientIndex",
+      "DonorRecipientIndex", "DonorRecipientIndex",
+      "Flexibility",
+      "RiskTolerance",
+      "Stability",
+      "LocalizationPredictability", "LocalizationPredictability", "LocalizationPredictability"
+    ),
+    iName = c(
+      "Donor–Recipient Index",
+      "Flexibility", "Risk Tolerance", "Stability", "Localization & Predictability",
+      "Earmarking Flexibility",
+      "Risk Tolerance",
+      "Donor–Recipient Stability Index",
+      "Local Actor Share", "Multi-Year Share", "Funding Volatility (CV)"
+    ),
+    Type = c("Aggregate", "Aggregate", "Aggregate", "Aggregate", "Aggregate",
+             rep("Indicator", 6)),
+    Direction = c(
+      1, 1, 1, 1, 1,
+      1,      # flexibility
+      1,      # risk tolerance
+      1,      # stability
+      1, 1, -1  # localisation/predictability indicators
+    ),
+    Weight = rep(1, 11)
+  )
+  
+  # Build the COIN
+  coin <- COINr::new_coin(iData = coin_data, iMeta = iMeta)
+  
+  # Normalize indicators
+  if (normalize) {
+    coin <- COINr::Normalise(
+      coin,
+      dset = "Raw",
+      ntype = "minmax",
+      npara = list(l_u = c(0, 100))
+    )
+  }
+  
+  # Aggregate pillars & index
+  if (aggregate) {
+    coin <- COINr::Aggregate(
+      coin,
+      dset = "Normalised",
+      f_ag = "a_amean"
+    )
+  }
+  
+  return(coin)
+}
+```
+  
+```{r example-build_donor_recipient_coin}
+build_donor_recipient_coin()
+```
+  
+```{r tests-build_donor_recipient_coin}
+test_that("build_donor_recipient_coin works", {
+  expect_true(inherits(build_donor_recipient_coin, "function")) 
+})
+```
+  
+  
+# compile_donor_location_metrics
+
+  
+```{r function-compile_donor_location_metrics}
+#' Title
+#' Compile Donor–Location Metrics
+#'
+#' This function computes and compiles all donor→location humanitarian financing
+#' indicators into a single harmonized dataset.  
+#' It serves as the main data preparation step before building a
+#' Donor–Location Composite Indicator (COIN).
+#'
+#' ## Included Indicators
+#'
+#' | Indicator | Description | Interpretation |
+#' |----------|-------------|----------------|
+#' | `Earmarking_Flexibility` | Weighted score based on GB earmarking type | Higher = more flexible funding |
+#' | `Risk_Tolerance` | Share of funding going to high-risk locations or new partners | Higher = higher donor risk appetite |
+#' | `DonorDestination_Stability_Index` | Fraction of years the donor funded the location | Higher = stronger long-term stability |
+#'
+#'
+#' ## Purpose
+#' This function consolidates donor–location calculations into one table,
+#' making it easy to:
+#'
+#' * build composite indices (COINr)
+#' * produce dashboards and scorecards
+#' * compare donor behaviour across crisis contexts
+#' * feed results into donor-funding strategy analysis
+#'
+#'
+#' ## Parameters
+#' @param flows A dataframe containing raw FTS-style flows, minimally including:
+#'   `sourceObjects`, `destinationObjects`, `amountUSD`, `budgetYear`,
+#'   and auxiliary variables required by the specific indicators.
+#'
+#' @param high_risk_locations Character vector. Names of high-risk locations
+#'   used in the risk tolerance indicator.
+#'
+#' @param new_partners Character vector. Names of "new" or "emerging"
+#'   recipient organizations (optional; used in risk tolerance logic).
+#'
+#' @param donors Optional character vector to restrict output to specific donors.
+#'
+#' @param locations Optional character vector to restrict output to specific locations.
+#'
+#'
+#' ## Returns
+#' @return A tibble with one row per donor–location pair including:
+#' * `donor`
+#' * `destination`
+#' * `Earmarking_Flexibility`
+#' * `Risk_Tolerance`
+#' * `DonorDestination_Stability_Index`
+#'
+#'
+#' ## Dependencies
+#' This function requires the following indicator functions to exist in the namespace:
+#'
+#' * `indicator_donor_destination_earmarking_flexibility()`
+#' * `indicator_donor_destination_risk_tolerance()`
+#' * `indicator_donor_destination_stability()`
+#'
+#' @importFrom dplyr select mutate left_join filter
+#' @export
+compile_donor_location_metrics <- function(
+  flows,
+  high_risk_locations = character(),
+  new_partners = character(),
+  donors = NULL,
+  locations = NULL
+) {
+  
+  # --- Compute individual indicators ---
+  earmark_df <- indicator_donor_destination_earmarking_flexibility(flows)
+  risk_df    <- indicator_donor_destination_risk_tolerance(
+    flows,
+    high_risk_locations = high_risk_locations,
+    new_partners = new_partners
+  )
+  stability_df <- indicator_donor_destination_stability(flows)
+  
+  # --- Harmonize names ---
+  risk_df <- risk_df %>%
+    dplyr::rename(destination = entity_name) %>%
+    dplyr::select(donor, destination, Risk_Tolerance)
+  
+  stability_df <- stability_df %>%
+    dplyr::select(donor, destination, DonorDestination_Stability_Index)
+  
+  # --- Merge all metrics ---
+  metrics <- earmark_df %>%
+    dplyr::left_join(risk_df, by = c("donor", "destination")) %>%
+    dplyr::left_join(stability_df, by = c("donor", "destination"))
+  
+  # --- Optional filtering ---
+  if (!is.null(donors)) {
+    metrics <- metrics %>% dplyr::filter(donor %in% donors)
+  }
+  if (!is.null(locations)) {
+    metrics <- metrics %>% dplyr::filter(destination %in% locations)
+  }
+  
+  return(metrics)
+}
+```
+  
+```{r example-compile_donor_location_metrics}
+metrics <- compile_donor_location_metrics(
+    flows,
+    high_risk_locations = c("Somalia", "South Sudan"),
+   new_partners = c("Local NGO A", "Local NGO B")
+ )
+```
+  
+```{r tests-compile_donor_location_metrics}
+test_that("compile_donor_location_metrics works", {
+  expect_true(inherits(compile_donor_location_metrics, "function")) 
+})
+```
+    
+  
+# build_location_coin
+    
+  
+```{r function-build_location_coin}
+#' Build Location COIN (Composite Indicator of Donor Geographic Behaviour)
+#'
+#' This function builds a composite indicator (COIN) measuring donor behaviour
+#' related to geographic allocation **for a specific recipient** (country, crisis,
+#' HRP/RRP/Flash Appeal, etc.).  
+#'
+#' The index aggregates indicators into three pillars:  
+#' **(1) Geographic Spread, (2) Localization, (3) Alignment & Predictability**.
+#'
+#' ## Indicator Structure Overview
+#'
+#' | Pillar                   | Indicator               | Direction | Interpretation |
+#' |--------------------------|--------------------------|-----------|----------------|
+#' | **Geographic Spread**    | `concentration_index`    | -         | Lower values indicate less concentration and more diversification across areas. |
+#' |                          | `subnational_spread`     | +         | Higher values indicate more subnational areas reached. |
+#' | **Localization**         | `locality_share`         | +         | Higher values indicate a stronger funding share going to local/national actors. |
+#' | **Alignment & Predictability** | `needs_alignment_score` | +   | Higher values mean funding is more closely aligned with assessed needs. |
+#' |                          | `year_to_year_cv`        | -         | Lower variability indicates more stable and predictable allocations. |
+#'
+#' Indicators marked with **+** improve donor performance when higher;  
+#' indicators marked with **−** improve performance when lower.
+#'
+#' ## Parameters
+#' @param donor_location_metrics Data frame. Output from your location-based
+#'   indicators pipeline. Must include at least:
+#'   `donor`, `recipient`, `concentration_index`, `subnational_spread`,
+#'   `sector_equity` (if used), `locality_share`, `needs_alignment_score`,
+#'   `year_to_year_cv`.
+#'
+#' @param recipient Character. The specific recipient to filter the dataset for.
+#'
+#' @param normalize Logical. Whether to normalize indicators (default `TRUE`).
+#'
+#' @param aggregate Logical. Whether to aggregate into pillars and a final index (default `TRUE`).
+#'
+#' ## Returns
+#' @return A COINr `coin` object containing:
+#'   - Raw indicator data
+#'   - Normalised indicators (if requested)
+#'   - Aggregated pillars and Location Index (if requested)
+#'
+#' ## Imports
+#' @importFrom dplyr filter mutate select
+#' @importFrom COINr new_coin Aggregate Normalise
+#'
+#' @export
+build_location_coin <- function(donor_location_metrics,
+                                recipient,
+                                normalize = TRUE,
+                                aggregate = TRUE) {
+  
+  # Filter dataset by recipient
+  donor_location_metrics <- donor_location_metrics %>%
+    dplyr::filter(recipient == !!recipient)
+  
+  # Prepare COINr-format data
+  coin_data <- donor_location_metrics %>%
+    dplyr::mutate(
+      uCode = make.names(donor),
+      uName = donor
+    ) %>%
+    dplyr::select(
+      uCode, uName,
+      concentration_index,
+      subnational_spread,
+      locality_share,
+      needs_alignment_score,
+      year_to_year_cv
+    )
+  
+  # Metadata describing hierarchy
+  iMeta <- data.frame(
+    Level = c(
+      3,        # Index
+      2, 2, 2,  # 3 pillars
+      1, 1,     # Pillar 1: Geographic Spread
+      1,        # Pillar 2: Localization
+      1, 1      # Pillar 3: Alignment & Predictability
+    ),
+    iCode = c(
+      "LocationIndex",
+      "GeographicSpread", "Localization", "AlignmentPredictability",
+      "concentration_index", "subnational_spread",
+      "locality_share",
+      "needs_alignment_score", "year_to_year_cv"
+    ),
+    Parent = c(
+      NA,
+      "LocationIndex", "LocationIndex", "LocationIndex",
+      "GeographicSpread", "GeographicSpread",
+      "Localization",
+      "AlignmentPredictability", "AlignmentPredictability"
+    ),
+    iName = c(
+      "Location Index",
+      "Geographic Spread", "Localization", "Alignment & Predictability",
+      "Concentration Index", "Subnational Spread",
+      "Locality Share",
+      "Needs Alignment", "Year-to-Year Variability"
+    ),
+    Type = c("Aggregate", "Aggregate", "Aggregate", "Aggregate",
+             rep("Indicator", 5)),
+    Direction = c(
+      1, 1, 1, 1,
+      -1, 1,
+      1,
+      1, -1
+    ),
+    Weight = rep(1, 9)
+  )
+  
+  # Build COIN
+  coin <- COINr::new_coin(iData = coin_data, iMeta = iMeta)
+  
+  # Normalize
+  if (normalize) {
+    coin <- COINr::Normalise(
+      coin, dset = "Raw",
+      ntype = "minmax",
+      npara = list(l_u = c(0, 100))
+    )
+  }
+  
+  # Aggregate
+  if (aggregate) {
+    coin <- COINr::Aggregate(coin, dset = "Normalised", f_ag = "a_amean")
+  }
+  
+  return(coin)
+}
+```
+  
+```{r example-build_location_coin}
+build_location_coin()
+```
+  
+```{r tests-build_location_coin}
+test_that("build_location_coin works", {
+  expect_true(inherits(build_location_coin, "function")) 
+})
+```
+        
+  
+<!--
+# There can be development actions
+
+Create a chunk with 'development' actions
+
+- The chunk needs to be named `development` or `dev`
+- It contains functions that are used for package development only
+- Note that you may want to store most of these functions in the 0-dev_history.Rmd file
+
+These are only included in the present flat template file, their content will not be part of the package anywhere else.
+-->
+
+```{r development-inflate, eval=FALSE}
+# Keep eval=FALSE to avoid infinite loop in case you hit the knit button
+# Execute in the console directly
+
+#remotes::install_github("thinkr-open/checkhelper")
+# checkhelper::print_globals()
+fusen::inflate(flat_file = "dev/flat_dev_3_index.Rmd", vignette_name = "3-Index")
+```
+
+

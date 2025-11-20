@@ -1,0 +1,8 @@
+^LICENSE\.md$
+^README\.Rmd$
+^CODE_OF_CONDUCT\.md$
+^ftsAnalysis\.Rproj$
+^\.Rproj\.user$
+^_pkgdown\.yml$
+^docs$
+^dev$

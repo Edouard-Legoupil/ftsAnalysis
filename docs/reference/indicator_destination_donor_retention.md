@@ -1,0 +1,61 @@
+# Destination-Focused: Donor Retention Index
+
+Calculates the proportion of donors who provided funding to a
+destination in consecutive years (repeat donors). Goal: Measures the
+proportion of donors who continue funding a destination year after year.
+
+## Usage
+
+``` r
+indicator_destination_donor_retention(flows, destinations_df = NULL)
+```
+
+## Arguments
+
+- flows:
+
+  A dataframe with `destinationObjects`, `sourceObjects`, `budgetYear`,
+  and `amountUSD`.
+
+- destinations_df:
+
+  (optional) A dataframe of destinations to merge results with.
+
+## Value
+
+A tibble with `destination` and `Destination_Donor_Retention_Index`.
+
+## Examples
+
+``` r
+destination <- indicator_destination_donor_retention(flows)
+#table(destination$Destination_Donor_Retention_Index)
+
+library(ggplot2)
+ggplot(destination, aes(x = Destination_Donor_Retention_Index)) +
+  geom_histogram( fill = "red", color = "white") +
+  unhcrthemes::theme_unhcr(grid = "Y", axis = "X", axis_title = FALSE) +
+  labs(
+    title = "Distribution of Destination Donor Retention Index",
+    x = "",
+    y = "Number of Destination",
+    caption = paste(
+    "Indicator interpretation:",
+    "Proportion of donors who continue funding a destination year after year. 
+    Higher values indicate loyal donor bases and sustained engagement.", "\n\n",
+    
+    "How to read the visualization:",
+    "Histogram shows retention rates. Higher values indicate stable donor 
+    relationships, lower values indicate high donor turnover and relationship
+    building needs.", "\n\n",
+    
+    "Humanitarian relevance:",
+    "Donor retention reduces transaction costs, builds contextual knowledge, 
+    and enables more effective long-term partnerships in complex crises.",
+    "\n\n",
+    
+    "Source: Financial Tracking Service (FTS) API."
+  )
+  )
+#> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
+```

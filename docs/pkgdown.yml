@@ -1,0 +1,8 @@
+pandoc: 3.6.3
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  1-data-tidying: 1-data-tidying.html
+  2-indicators: 2-indicators.html
+  5-visualisation: 5-visualisation.html
+last_built: 2025-11-20T16:37Z
