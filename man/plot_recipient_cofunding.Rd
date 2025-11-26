@@ -25,9 +25,9 @@ p <- plot_recipient_cofunding(flows,
 
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 }

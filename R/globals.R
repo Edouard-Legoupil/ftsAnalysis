@@ -73,5 +73,29 @@ globalVariables(unique(c(
   # indicator_recipient_funding_share:
   "amountUSD", "destinationObjects", "name", "total_received", "type",
   # indicator_recipient_systemic_diversification:
-  "amountUSD", "destinationObjects", "destinationObjects_name", "destinationObjects_type", "donor", "entropy", "recipient", "Recipient_Diversification_Index", "share", "sourceObjects", "sourceObjects_name", "sourceObjects_type", "total"
+  "amountUSD", "destinationObjects", "destinationObjects_name", "destinationObjects_type", "donor", "entropy", "recipient", "Recipient_Diversification_Index", "share", "sourceObjects", "sourceObjects_name", "sourceObjects_type", "total",
+  # plot_donor_cluster_coverage:
+  "flows_per_cluster",
+  # plot_donor_earmarking:
+  "total_usd",
+  # plot_donor_flowtype:
+  "total_usd",
+  # plot_donor_funding_over_time:
+  "total_usd",
+  # plot_funding_status_timeline:
+  "status", "total_usd",
+  # plot_location_funding_destination:
+  "total_usd",
+  # plot_location_funding_donor:
+  "total_usd",
+  # plot_location_heatmap:
+  "destinationObjects2", "destinationObjects2_name", "destinationObjects2_type", "total_usd",
+  # plot_recipient_cofunding:
+  "category",
+  # plot_recipient_contribution_type:
+  "contributionType", "total_usd",
+  # plot_recipient_funding_composition:
+  "total_usd",
+  # plot_recipient_grandbargain:
+  "total_usd"
 )))

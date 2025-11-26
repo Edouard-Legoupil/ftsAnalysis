@@ -2,12 +2,18 @@
 
 This function takes a ggplot2 object and generates a storytelling
 narrative focused on humanitarian insights. It uses the {ellmer} package
-to call a large language model from a supported provider.
+to call a large or small language model from a supported provider.
 
 ## Usage
 
 ``` r
-generate_plot_story(plot, max_tokens = 30, provider = NULL, model = NULL)
+generate_plot_story(
+  plot,
+  max_tokens = 30,
+  provider = NULL,
+  model = NULL,
+  clean_response = TRUE
+)
 ```
 
 ## Arguments
@@ -24,13 +30,19 @@ generate_plot_story(plot, max_tokens = 30, provider = NULL, model = NULL)
 - provider:
 
   Optional character string specifying the provider. Options include:
-  `"openai"`, `"gemini"`, `"anthropic"`, `"ollama"`. If `NULL`,
-  auto-detect from environment keys.
+  `"openai"`, `"gemini"`, `"anthropic"`, `"ollama"`, `"azure"`. If
+  `NULL`, auto-detect from environment keys.
 
 - model:
 
-  Optional character string specifying the model name. If `NULL`, a
-  default model for the chosen provider will be used.
+  Optional character string specifying the model name. For Azure, this
+  is typically the deployment name. If `NULL`, a default model for the
+  chosen provider will be used.
+
+- clean_response:
+
+  Logical. Whether to clean the response by removing thinking tags and
+  other artifacts (default = TRUE).
 
 ## Value
 
@@ -39,20 +51,24 @@ humanitarian data.
 
 ## Details
 
-The narrative can be used as a full‑text explanation or a concise
-subtitle for plots. The LLM has access to the plot’s data (truncated for
-efficiency), title, subtitle, and caption. Both provider and model can
-be chosen explicitly or detected automatically based on which API key
-environment variable is set.
+If you do not have API keys or need to work offline, simply get ollama
+and look at top reasoning models - https://ollama.com/search?c=thinking
 
 Setup:
 
 1.  Install {ellmer}: `install.packages("ellmer")`
 
-2.  Use Ollama or Set your API key in your environment, for example:
-    `Sys.setenv(OPENAI_API_KEY = "<YOUR_OPENAI_KEY>")`
-    `Sys.setenv(GEMINI_API_KEY = "<YOUR_GOOGLE_GEMINI_KEY>")`
-    `Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")`
+2.  Set your API key in your environment. For Azure OpenAI, use the
+    standard OpenAI key variable:
+    `Sys.setenv(OPENAI_API_KEY = "<YOUR_AZURE_OPENAI_KEY>")`
+
+3.  When using Azure, set `provider = "azure"` and provide the env
+    variables
+    `Sys.setenv(AZURE_OPENAI_ENDPOINT = "<YOUR_AZURE_ENDPOINT>")`
+    `Sys.setenv(AZURE_OPENAI_API_VERSION = "<YOUR_AZURE_OPENAI_API_VERSION>")`
+    The best place to set this is in .Renviron, which you can easily
+    edit by calling
+    [`usethis::edit_r_environ()`](https://usethis.r-lib.org/reference/edit.html)
 
 ## Examples
 
@@ -65,10 +81,10 @@ p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
         subtitle = "Fuel consumption vs weight",
         caption = "Source: mtcars dataset")
 
-story <- generate_plot_story(p)
-#> Using model = "gemini-2.5-flash".
-cat(story)
-#> Heavier aid vehicles burn more fuel, increasing costs and logistical challenges for life-saving missions.
+generate_plot_story(p, provider = "ollama", model = "deepseek-r1")
+#> [1] "This chart shows a clear trend in fuel efficiency and vehicle weight. Lighter cars generally achieve higher fuel economy, measured here by miles per gallon (MPG). There's a strong inverse relationship between the two variables: lower vehicle weight correlates strongly with better fuel consumption performance. Heavy vehicles consume more fuel than is typical for their size."
+
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # To use as subtitle:
 p + ggplot2::labs(subtitle = story)
 ```

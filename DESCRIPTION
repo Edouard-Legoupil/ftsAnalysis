@@ -5,28 +5,41 @@ Authors@R: c(
     person("Edouard", "Legoupil", , "legoupil@unhcr.org", role = c("aut", "cre")),
     person(, "UNHCR", role = "cph")
   )
+Maintainer: Edouard Legoupil <legoupil@unhcr.org>
 Description: Generate Metrics, Index, Analysis and Visualisation to
     understand donors behavior.
 License: MIT + file LICENSE
+URL: https://edouard-legoupil.github.io/ftsAnalysis/
+BugReports: https://github.com/edouard-legoupil/ftsAnalysis/issues
 Depends: 
     R (>= 3.5)
 Imports: 
     data.table,
     dplyr,
     ellmer,
+    forecast,
     ggplot2,
+    here,
     httr,
+    igraph,
     jsonlite,
     lubridate,
     purrr,
+    quarto,
     scales,
+    slam,
     stats,
     stringi,
     stringr,
     tibble,
     tidyr,
-    unhcrthemes
+    tm,
+    unhcrthemes,
+    utils,
+    wordcloud2
 Suggests: 
+    ggraph,
+    ggrepel,
     knitr,
     rmarkdown,
     testthat,

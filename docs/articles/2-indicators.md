@@ -2,6 +2,9 @@
 
 ``` r
 library(ftsAnalysis)
+#> Registered S3 method overwritten by 'quantmod':
+#>   method            from
+#>   as.zoo.data.frame zoo
 ```
 
 Using this flows data to compile different types of indicators
@@ -21,7 +24,7 @@ donors <- indicator_donor_funding_consistency(flows)
 table(donors$Funding_Consistency_Index)
 #> 
 #>   1 
-#> 249
+#> 247
 # library(ggplot2)
 # ggplot(donors, aes(x = Funding_Consistency_Index)) +
 #   geom_histogram(fill = "steelblue", color = "white") +
@@ -53,14 +56,6 @@ table(donors$Funding_Consistency_Index)
 
 ``` r
 donors <- indicator_donor_relationship_duration(flows)
-#> Warning: There were 74 warnings in `dplyr::summarise()`.
-#> The first warning was:
-#> ℹ In argument: `first_year = min(budgetYear, na.rm = TRUE)`.
-#> ℹ In group 7: `donor = "Al-Salam Association for humanitarian and charitable
-#>   works"`.
-#> Caused by warning in `min()`:
-#> ! no non-missing arguments to min; returning Inf
-#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 73 remaining warnings.
 #table(donor$Relationship_Duration_Index)
 library(ggplot2)
 ggplot(donors, aes(x = Relationship_Duration_Index)) +
@@ -87,8 +82,6 @@ ggplot(donors, aes(x = Relationship_Duration_Index)) +
     "Source: Financial Tracking Service (FTS) API."
   )
   )
-#> Warning: Removed 37 rows containing non-finite outside the scale range
-#> (`stat_bin()`).
 ```
 
 ![](2-indicators_files/figure-html/example-indicator_donor_relationship_duration-1.png)
@@ -124,7 +117,7 @@ ggplot(donors, aes(x = Funding_Growth_Trend)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 193 rows containing non-finite outside the scale range
+#> Warning: Removed 154 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -162,7 +155,7 @@ ggplot(donors, aes(x = Timing_Consistency)) +
     "Source: Financial Tracking Service (FTS) API."
   )
   )
-#> Warning: Removed 119 rows containing non-finite outside the scale range
+#> Warning: Removed 106 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -598,14 +591,6 @@ ggplot(plot_df, aes(x = donor2, y = donor1, fill = Destination_Alignment)) +
 
 ``` r
 donor_recipient <- indicator_donor_recipient_relationship_duration(flows)
-#> Warning: There were 1180 warnings in `dplyr::summarise()`.
-#> The first warning was:
-#> ℹ In argument: `first_year = min(budgetYear, na.rm = TRUE)`.
-#> ℹ In group 3: `donor = "African Development Bank"` `recipient = "Food and
-#>   Agriculture Organization of the United Nations"`.
-#> Caused by warning in `min()`:
-#> ! no non-missing arguments to min; returning Inf
-#> ℹ Run `dplyr::last_dplyr_warnings()` to see the 1179 remaining warnings.
 #table(donor_recipient$Relationship_Duration_Index)
 
 library(ggplot2)
@@ -634,7 +619,7 @@ ggplot(donor_recipient, aes(x = Relationship_Duration_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 1782 rows containing non-finite outside the scale range
+#> Warning: Removed 1480 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -672,7 +657,7 @@ ggplot(donor_recipient, aes(x = Funding_Growth_Trend)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 1782 rows containing non-finite outside the scale range
+#> Warning: Removed 1480 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -712,8 +697,6 @@ ggplot(donor_recipient, aes(x = DonorRecipient_Stability_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 295 rows containing non-finite outside the scale range
-#> (`stat_bin()`).
 ```
 
 ![](2-indicators_files/figure-html/example-indicator_donor_recipient_stability-1.png)
@@ -787,7 +770,7 @@ ggplot(donor_recipient, aes(x = DonorRecipient_Trend_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 1782 rows containing non-finite outside the scale range
+#> Warning: Removed 1480 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -899,7 +882,7 @@ ggplot(donor, aes(x = DonorDestination_Focus_Trend)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 187 rows containing non-finite outside the scale range
+#> Warning: Removed 146 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -1243,7 +1226,7 @@ ggplot(recipients, aes(x = Amount_Stability)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 564 rows containing non-finite outside the scale range
+#> Warning: Removed 455 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -1318,7 +1301,7 @@ ggplot(recipients, aes(x = Recipient_Diversification_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 600 rows containing non-finite outside the scale range
+#> Warning: Removed 469 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -1434,8 +1417,6 @@ ggplot(destination, aes(x = Earmarking_Flexibility)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 1 row containing non-finite outside the scale range
-#> (`stat_bin()`).
 ```
 
 ![](2-indicators_files/figure-html/example-indicator_destination_earmarking_flexibility-1.png)
@@ -1510,7 +1491,7 @@ ggplot(destination, aes(x = Destination_Funding_Stability_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 37 rows containing non-finite outside the scale range
+#> Warning: Removed 45 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -1549,7 +1530,7 @@ ggplot(destination, aes(x = Destination_Funding_Growth_Trend)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 49 rows containing non-finite outside the scale range
+#> Warning: Removed 45 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 
@@ -1663,7 +1644,7 @@ ggplot(destination, aes(x = Destination_Funding_Volatility)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 36 rows containing non-finite outside the scale range
+#> Warning: Removed 44 rows containing non-finite outside the scale range
 #> (`stat_bin()`).
 ```
 

@@ -1,5 +1,120 @@
 ---
-title: "template"
-format: html
+title: "Humanitarian Funding Flows Analisis  "
+subtitle: "for Recipient: {{< r name >}}"
+format:
+  html:
+    toc: true
+    code-fold: true
+    self-contained: true
+params:
+  name: "United Nations High Commissioner for Refugees"
 ---
 
+```{r setup, include=FALSE}
+# Load necessary libraries 
+library(ftsAnalysis)
+# Set default Quarto options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# Access parameters passed during rendering
+recipient_name <- params$name
+
+```
+
+# Overview
+
+# plot_recipient_funding_composition
+  
+```{r example-plot_recipient_funding_composition}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_recipient_funding_composition(flows, 
+              recipient_name )
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  
+
+# plot_recipient_grandbargain
+  
+```{r example-plot_recipient_grandbargain}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_recipient_grandbargain(flows,
+          recipient_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  
+  
+# plot_recipient_cofunding
+  
+```{r example-plot_recipient_cofunding}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_recipient_cofunding(flows, 
+              recipient_name)
+
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  
+
+# plot_recipient_contribution_type
+  
+```{r example-plot_recipient_contribution_type}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_recipient_contribution_type(flows, 
+                recipient_name)
+
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`

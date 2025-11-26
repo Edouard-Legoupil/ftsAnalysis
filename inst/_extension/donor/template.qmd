@@ -1,5 +1,114 @@
 ---
-title: "template"
-format: html
+title: "Humanitarian Funding Flows Analisis  "
+subtitle: "for Donor: {{< r name >}}"
+format:
+  html:
+    toc: true
+    code-fold: true
+    self-contained: true
+params:
+  name: "Spain, Government of"
 ---
 
+```{r setup, include=FALSE}
+# Load necessary libraries 
+library(ftsAnalysis)
+# Set default Quarto options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# Access parameters passed during rendering
+donor_name <- params$yname
+
+
+```
+
+# Overview
+
+
+  
+```{r example-plot_donor_funding_over_time}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_donor_funding_over_time(flows, donor_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+#cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+print(p + ggplot2::labs(subtitle = dubbed))
+
+```
+
+
+`r story`
+  
+
+  
+```{r example-plot_donor_earmarking}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_donor_earmarking(flows, donor_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+  
+`r story`  
+  
+
+
+  
+```{r example-plot_donor_flowtype}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_donor_flowtype(flows, donor_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+
+
+  
+```{r example-plot_donor_cluster_coverage}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_donor_cluster_coverage(flows, donor_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`

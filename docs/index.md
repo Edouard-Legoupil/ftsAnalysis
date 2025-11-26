@@ -1,8 +1,9 @@
 # `{ftsAnalysis}`
 
-The goal of `{ftsAnalysis}` is to provide a set of metrics, index,
-analysis and visualization to better understand data from [OCHA
-Financial Tracking
+The goal of
+[ftsAnalysis](https://edouard-legoupil.github.io/ftsAnalysis/) is to
+provide a set of metrics, index, analysis and visualization to better
+understand data from [OCHA Financial Tracking
 Service](https://fts.unocha.org/content/about-fts-using-fts-data).
 
 This package enables the creation of detailed reports, with included

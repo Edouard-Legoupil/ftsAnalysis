@@ -1,0 +1,80 @@
+# Systemic: Network Density and Granularity Insights
+
+Calculates key metrics for the funding network structure, including
+overall density, density over time (by year), and the granularity
+(density of core links vs. total links).
+
+## Usage
+
+``` r
+analysis_systemic_network_insights(flows, core_threshold = 1e+05)
+```
+
+## Arguments
+
+- flows:
+
+  A dataframe including `sourceObjects`, `destinationObjects`, and
+  `budgetYear`.
+
+- core_threshold:
+
+  Numeric: Minimum funding amount (USD) for a link to be considered
+  "Core". Default is 100000 USD.
+
+## Value
+
+A tibble with key network metrics: Overall Density, Density by Year,
+Core Density, and Granularity.
+
+## Examples
+
+``` r
+network_insights <- analysis_systemic_network_insights(flows)
+
+density_trend_data <- network_insights$Density_Trend
+
+
+ggplot2::ggplot(network_insights$Density_Trend, ggplot2::aes(x = year, y = Density_by_Year)) +
+  ggplot2::geom_line(color = "#4361EE", size = 1.2) +
+  ggplot2::geom_point(color = "#4361EE", size = 3) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, linetype = "dashed", 
+              color = "grey50") +
+  ggplot2::scale_y_continuous(labels = scales::percent, 
+                              limits = c(0, 
+            max(network_insights$Density_Trend$Density_by_Year) * 1.1)) +
+  ggplot2::scale_x_continuous(breaks = unique(network_insights$Density_Trend$year)) +
+  ggplot2::labs(
+    title = "Evolution of Funding Network Connectivity (Donor-Recipient Density)",
+    subtitle = "Tracking the percentage of possible donor-recipient links that 
+    were actually funded each year.",
+    x = "Year",
+    y = "Network Density (%)",
+    caption = paste0(
+    "Indicator interpretation:",
+    "This visualization tracks the **Network Density** of the funding ecosystem
+    over time. Density is a measure of **connectivity**: it represents the
+    percentage of all theoretically possible unique donor-to-recipient
+    relationships that actually received funding in a given year. 
+    The dashed line shows the long-term trend.",
+    "\n\n",
+    
+    "An **increasing density trend** suggests the ecosystem is becoming more
+    distributed and interconnected, which may reduce risk reliance on a few key
+    links. A **decreasing density trend** suggests the network is retracting or
+    consolidating. 
+    This helps us assess the maturity and fragmentation of the funding system.", 
+    "\n\n",
+    
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")  ) +
+  unhcrthemes::theme_unhcr(
+    grid = "Y",
+    axis = TRUE,
+    axis_title = TRUE,
+    legend = FALSE
+  )
+#> Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+#> ℹ Please use `linewidth` instead.
+#> `geom_smooth()` using formula = 'y ~ x'
+
+```

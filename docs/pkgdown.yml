@@ -4,5 +4,6 @@ pkgdown_sha: ~
 articles:
   1-data-tidying: 1-data-tidying.html
   2-indicators: 2-indicators.html
+  4-analysis: 4-analysis.html
   5-visualisation: 5-visualisation.html
-last_built: 2025-11-20T16:37Z
+last_built: 2025-11-26T01:10Z

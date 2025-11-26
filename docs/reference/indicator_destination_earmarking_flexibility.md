@@ -58,5 +58,4 @@ ggplot(destination, aes(x = Earmarking_Flexibility)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 1 row containing non-finite outside the scale range (`stat_bin()`).
 ```

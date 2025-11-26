@@ -27,6 +27,7 @@ Useful to identify funding hotspots and compare regions."></head><body>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/edouard-legoupil/ftsAnalysis/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -36,7 +37,7 @@ Useful to identify funding hotspots and compare regions."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Plot Funding by Destination Location</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/edouard-legoupil/ftsAnalysis/blob/HEAD/R/plot_location_funding_destination.R" class="external-link"><code>R/plot_location_funding_destination.R</code></a></small>
       <div class="d-none name"><code>plot_location_funding_destination.Rd</code></div>
     </div>
 
@@ -72,15 +73,10 @@ Useful to identify funding hotspots and compare regions.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">plot_location_funding_destination</span><span class="op">(</span><span class="va">flows</span>, location_name<span class="op">=</span> <span class="st">"Burundi"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># getting LLm story</span></span></span>
-<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">story</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Burundi's humanitarian landscape relies heavily on external support, and understanding funding sources is key to sustaining aid efforts. This visualization starkly reveals that a single donor stands out, contributing over $81 million. This colossal contribution represents the vast majority of aid detailed here, demonstrating a high concentration of funding for the country.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> While a few other donors provide significant support, each in the range of $7-8 million, their combined contributions still pale in comparison to the largest funder. Many other partners provide smaller, yet vital, amounts. This concentrated funding pattern underscores both the critical commitment of major donors and a potential vulnerability. Diversifying humanitarian funding for Burundi could enhance resilience and ensure more stable, predictable resources for people in need, minimizing over-reliance on any single source.</span>
+<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"ollama"</span>, model <span class="op">=</span> <span class="st">"deepseek-r1"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># cat(story)</span></span></span>
 <span class="r-in"><span><span class="co"># and plot with more powerful subtitle</span></span></span>
-<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
+<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"ollama"</span>, model <span class="op">=</span> <span class="st">"deepseek-r1"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">+</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>subtitle <span class="op">=</span> <span class="va">dubbed</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_location_funding_destination-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>

@@ -26,11 +26,13 @@ funding flow data."></head><body>
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
     <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/edouard-legoupil/ftsAnalysis/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -40,7 +42,7 @@ funding flow data."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Filter and Normalize FTS Funding Flows for Indicator Computation</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/edouard-legoupil/ftsAnalysis/blob/HEAD/R/filter_flows_for_indicators.R" class="external-link"><code>R/filter_flows_for_indicators.R</code></a></small>
       <div class="d-none name"><code>filter_flows_for_indicators.Rd</code></div>
     </div>
 
@@ -53,7 +55,7 @@ funding flow data.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">filter_flows_for_indicators</span><span class="op">(</span><span class="va">flows</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">filter_flows_for_indicators</span><span class="op">(</span><span class="va">flows</span>, fromyear <span class="op">=</span> <span class="fl">2020</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -61,18 +63,17 @@ funding flow data.</p>
 
 
 <dl><dt id="arg-flows">flows<a class="anchor" aria-label="anchor" href="#arg-flows"></a></dt>
-<dd><p>A tibble or dataframe containing FTS funding flows, with at
-minimum the following columns:</p><ul><li><p><code>boundary</code>: classification of flow direction relative to a search boundary</p></li>
-<li><p><code>childFlowIds</code>: list-column of IDs of downstream child flows</p></li>
-<li><p><code>flowType</code>: flow categorization ("Carryover", "Parked", "Pass through", "Standard")</p></li>
-<li><p><code>budgetYear</code>: year of budget attribution (character, factor, or numeric)</p></li>
-</ul></dd>
+<dd><p>A tibble or dataframe containing FTS funding flows from OCHA API</p></dd>
+
+
+<dt id="arg-fromyear">fromyear<a class="anchor" aria-label="anchor" href="#arg-fromyear"></a></dt>
+<dd><p>default 2020</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A tibble of cleaned and normalized flows suitable for all donor-,
-recipient-, destination-, and donor→recipient indicator functions.
+recipient-, destination-, and donor-&gt;recipient indicator functions.
 The returned dataset contains only incoming, non-parent, non-parked
 flows with numeric budget years.</p>
     </div>
@@ -103,7 +104,7 @@ analytical scope enter the indicator dataset.</p>
 
 
 <p>FTS allows funding flows to be "chained" to represent cascading
-funding (donor → agency → partner). Parent flows are typically
+funding (donor -&gt; agency -&gt; partner). Parent flows are typically
 high-level envelopes; child flows represent operational allocations.</p>
 <p>This function:</p><ul><li><p>Identifies parents by the presence of one or more <code>childFlowIds</code>.</p></li>
 <li><p>Removes all parent flows from the dataset.</p></li>
@@ -151,7 +152,11 @@ function.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co">#cleaned &lt;- filter_flows_for_indicators(flows)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">flows</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 22441</span>
+<span class="r-in"><span><span class="va">cleaned</span> <span class="op">&lt;-</span> <span class="fu">filter_flows_for_indicators</span><span class="op">(</span><span class="va">flows</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">cleaned</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 11496</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

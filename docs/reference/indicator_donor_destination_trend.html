@@ -24,11 +24,13 @@ Goal: Captures whether a donor’s portfolio is becoming more or less geographic
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
     <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/edouard-legoupil/ftsAnalysis/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -38,7 +40,7 @@ Goal: Captures whether a donor’s portfolio is becoming more or less geographic
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Donor→Destination: Geographic Focus Trend</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/edouard-legoupil/ftsAnalysis/blob/HEAD/R/indicator_donor_destination_trend.R" class="external-link"><code>R/indicator_donor_destination_trend.R</code></a></small>
       <div class="d-none name"><code>indicator_donor_destination_trend.Rd</code></div>
     </div>
 
@@ -103,7 +105,7 @@ merge results with.</p></dd>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Removed 187 rows containing non-finite outside the scale range (`stat_bin()`).</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Removed 146 rows containing non-finite outside the scale range (`stat_bin()`).</span>
 <span class="r-plt img"><img src="indicator_donor_destination_trend-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>
     </div>

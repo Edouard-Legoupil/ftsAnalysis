@@ -32,7 +32,7 @@
 #'
 #' ## 2. Parent/Child Flow Deduplication
 #' FTS allows funding flows to be "chained" to represent cascading
-#' funding (donor → agency → partner). Parent flows are typically
+#' funding (donor -> agency -> partner). Parent flows are typically
 #' high-level envelopes; child flows represent operational allocations.
 #'
 #' This function:
@@ -69,15 +69,11 @@
 #' suppressed.
 #'
 #'
-#' @param flows A tibble or dataframe containing FTS funding flows, with at
-#'   minimum the following columns:
-#'   * `boundary`: classification of flow direction relative to a search boundary  
-#'   * `childFlowIds`: list-column of IDs of downstream child flows  
-#'   * `flowType`: flow categorization ("Carryover", "Parked", "Pass through", "Standard")  
-#'   * `budgetYear`: year of budget attribution (character, factor, or numeric)
+#' @param flows A tibble or dataframe containing FTS funding flows from OCHA API
+#' @param fromyear default 2020
 #'
 #' @return A tibble of cleaned and normalized flows suitable for all donor-,
-#'   recipient-, destination-, and donor→recipient indicator functions.  
+#'   recipient-, destination-, and donor->recipient indicator functions.  
 #'   The returned dataset contains only incoming, non-parent, non-parked
 #'   flows with numeric budget years.
 #'
@@ -91,11 +87,17 @@
 #' @importFrom purrr map_lgl
 #' @export
 #' @examples
-#' #cleaned <- filter_flows_for_indicators(flows)
-filter_flows_for_indicators <- function(flows) {
-  flows |>
+#' nrow(flows)
+#' cleaned <- filter_flows_for_indicators(flows)
+#' nrow(cleaned)
+filter_flows_for_indicators <- function(flows,
+                                        fromyear = 2020) {
+  clean <- flows |>
     # Convert budgetYear to numeric safely
     dplyr::mutate(budgetYear = suppressWarnings(as.numeric(budgetYear))) |>
+    
+    # Filter from year
+    dplyr::filter(budgetYear >= fromyear) |>
     
     # incoming flows only (default FTS donor logic)
     dplyr::filter(boundary == "incoming") |>
@@ -106,4 +108,6 @@ filter_flows_for_indicators <- function(flows) {
     
     # remove parked envelopes (use children instead)
     dplyr::filter(flowType != "Parked")
+    
+    return(clean)
 }

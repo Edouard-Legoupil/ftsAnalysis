@@ -10,6 +10,10 @@ editor_options:
 
 ```{r development, include=FALSE}
 library(testthat)
+library(ggplot2)
+library(forecast)
+library(ggraph)
+library(igraph)
 ```
 
 <!--
@@ -23,165 +27,442 @@ If it is the first time you use {fusen}, after 'description', you can directly r
 pkgload::load_all(export_all = FALSE)
 ```
 
-# analysis_systemic_network_density
+
+# analysis_wordcloud_from_flows
 
   
-```{r function-analysis_systemic_network_density}
-#' Systemic: Network Density
+```{r function-analysis_wordcloud_from_flows}
+#' Generate a Word Cloud from Flow Descriptions
 #'
-#' Calculates network density between donors and recipients as
-#' the ratio of unique donor–recipient pairs to the maximum possible links.
+#' Aggregates flow descriptions, cleans the text, and generates a word cloud.
+#' Optionally facets the word cloud generation by budget year.
+#'
+#' @param flows Dataframe `flows`.
+#' @param facet_by_year Logical scalar: If TRUE, returns a list of word clouds,
+#'   one for each unique budget year. If FALSE, returns a single word cloud
+#'   from all descriptions combined.
+#' @param min_freq Integer: Minimum frequency of a word to be included in the 
+#' cloud.
+#' @param max_words Integer: Maximum number of words to display in the cloud.
+#' @param stopwords Character vector: Additional words to remove 
+#' (beyond standard English stopwords).
 #' 
-#' Goal: Measures connectivity of the funding ecosystem:
-#' number of unique links / maximum possible links.
-#'
-#' @param flows A dataframe including `sourceObjects`, `destinationObjects`.
-#'
-#' @return A tibble with one value: `Network_Density`.
-#' @importFrom dplyr unnest filter summarise n_distinct rename
+#' @return A wordcloud2 object (if facet_by_year=FALSE) or a named list of
+#'   wordcloud2 objects (if facet_by_year=TRUE).
+#'   
+#' @importFrom dplyr select filter group_by summarise pull
+#' @importFrom tm VCorpus VectorSource tm_map stopwords content_transformer
+#' @importFrom tm removeWords removePunctuation removeNumbers stripWhitespace
+#' @importFrom tm DocumentTermMatrix
+#' @importFrom slam row_sums
+#' @importFrom wordcloud2 wordcloud2
 #' @export
-analysis_systemic_network_density <- function(flows) {
-  df <- flows %>%
-    select(sourceObjects, destinationObjects) %>%
-    unnest(sourceObjects, names_repair = "unique") %>%
-    filter(sourceObjects.type == "Organization") %>%
-    rename(donor = sourceObjects.name) %>%
-    unnest(destinationObjects, names_repair = "unique") %>%
-    filter(destinationObjects.type == "Organization") %>%
-    rename(recipient = destinationObjects.name)
+analysis_wordcloud_from_flows <- function(
+    flows,
+    facet_by_year = FALSE,
+    min_freq = 5,
+    max_words = 100,
+    stopwords = c("project",
+                  "response",
+                  "support",
+                  "activities",
+                  "million",
+                  "allocation",
+                  "reserve",
+                  "usd",
+                  "flow",
+                  "end",
+                  "start",
+                  "standard",
+                  "date",
+                  "code",
+                  "type",
+                  "humanitarian",
+                  "region",
+                  "plan",
+                  "humanitaire",
+                  "r<c3><a9>ponse")) {
   
-  n_donors <- n_distinct(df$donor)
-  n_recipients <- n_distinct(df$recipient)
-  n_links <- n_distinct(paste(df$donor, df$recipient))
   
-  tibble(Network_Density = n_links / (n_donors * n_recipients))
+  # --- 1. Text Preprocessing Function ---
+  process_text <- function(descriptions) {
+    # 1. Create a corpus
+    corpus <- tm::VCorpus(tm::VectorSource(descriptions))
+    
+    # 2. Text Transformation and Cleaning
+    corpus <- corpus |>
+      tm::tm_map(tm::content_transformer(tolower)) |>       # Convert to lowercase
+      tm::tm_map(tm::removeWords, tm::stopwords("english")) |> # Remove standard English stopwords
+      tm::tm_map(tm::removeWords, tm::stopwords("french")) |> # Remove standard French stopwords
+      tm::tm_map(tm::removeWords, stopwords) |>             # Remove custom stopwords
+      tm::tm_map(tm::removePunctuation) |>                 # Remove punctuation
+      tm::tm_map(tm::removeNumbers) |>                     # Remove numbers
+      tm::tm_map(tm::stripWhitespace)                      # Remove extra whitespace
+    
+    # 3. Create Term Document Matrix and convert to frequency table
+    tdm <- tm::DocumentTermMatrix(corpus)
+    freq <- slam::row_sums(tdm, na.rm = TRUE)
+    
+    # Get word frequencies
+    freq_df <- data.frame(
+      word = colnames(tdm),
+      freq = as.numeric(colSums(as.matrix(tdm))),
+      row.names = NULL
+    ) |>
+      dplyr::arrange(dplyr::desc(freq)) |>
+      dplyr::filter(freq >= min_freq) |>
+      dplyr::slice_head(n = max_words)
+    
+    return(freq_df)
+  }
+  
+  # --- 2. Data Preparation and Grouping ---
+  df_text <- flows |>
+    dplyr::select(description, budgetYear) |>
+    dplyr::filter(!is.na(description), description != "")
+  
+  # --- 3. Generate Word Cloud(s) ---
+  
+  if (facet_by_year) {
+    
+    # Group by year and aggregate descriptions
+    df_yearly <- df_text |>
+      dplyr::group_by(budgetYear) |>
+      dplyr::summarise(all_descriptions = paste(description, collapse = " "), .groups = "drop")
+    
+    wordcloud_list <- list()
+    
+    for (i in 1:nrow(df_yearly)) {
+      year <- df_yearly$budgetYear[i]
+      desc <- df_yearly$all_descriptions[i]
+      
+      freq_df <- process_text(desc)
+      
+      # Generate interactive word cloud for the year
+      wordcloud_list[[as.character(year)]] <- wordcloud2::wordcloud2(
+        data = freq_df,
+        size = 0.7,
+        shape = 'circle',
+        rotateRatio = 0.5,
+        ellipticity = 0.8
+      )
+    }
+    
+    return(wordcloud_list)
+    
+  } else {
+    
+    # Single word cloud for all descriptions
+    all_descriptions <- paste(df_text$description, collapse = " ")
+    freq_df <- process_text(all_descriptions)
+    
+    # Generate interactive word cloud
+    return(wordcloud2::wordcloud2(
+      data = freq_df,
+      size = 0.7,
+      shape = 'circle',
+      rotateRatio = 0.5,
+      ellipticity = 0.8
+    ))
+  }
 }
 ```
   
-```{r example-analysis_systemic_network_density}
-analysis_systemic_network_density(flows)
+```{r example-analysis_wordcloud_from_flows, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+analysis_wordcloud_from_flows(flows, facet_by_year = FALSE)
+# Returns a named list of word cloud objects
+yearly_clouds <- analysis_wordcloud_from_flows(flows, facet_by_year = TRUE)
+
+# To view the cloud for a specific year  
+yearly_clouds[["2015"]]
+yearly_clouds[["2024"]]
+yearly_clouds[["2025"]]
 ```
   
-```{r tests-analysis_systemic_network_density}
-test_that("analysis_systemic_network_density works", {
-  expect_true(inherits(analysis_systemic_network_density, "function")) 
+```{r tests-analysis_wordcloud_from_flows}
+test_that("analysis_wordcloud_from_flows works", {
+  expect_true(inherits(analysis_wordcloud_from_flows, "function")) 
+})
+```
+  
+
+# analysis_systemic_network_insights
+
+  
+```{r function-analysis_systemic_network_insights}
+#' Systemic: Network Density and Granularity Insights
+#'
+#' Calculates key metrics for the funding network structure, including overall density,
+#' density over time (by year), and the granularity (density of core links vs. total links).
+#'
+#' @param flows A dataframe including `sourceObjects`, `destinationObjects`, and `budgetYear`.
+#' @param core_threshold Numeric: Minimum funding amount (USD) for a link to be considered "Core". Default is 100000 USD.
+#'
+#' @return A tibble with key network metrics: Overall Density, Density by Year, Core Density, and Granularity.
+#' @importFrom dplyr filter summarise n_distinct rename group_by mutate ungroup
+#' @importFrom tidyr unnest 
+#' @importFrom tibble tibble
+#' @export
+analysis_systemic_network_insights <- function(flows, core_threshold = 100000) {
+
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Data Preparation ---
+  df <- flows |>
+    tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(sourceObjects_type == "Organization") |>
+    dplyr::rename(donor = sourceObjects_name) |>
+    tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Organization") |>
+    dplyr::rename(recipient = destinationObjects_name) |>
+    dplyr::mutate(
+      amountUSD = as.numeric(amountUSD),
+      link_id = paste(donor, recipient, sep = "->")
+    )
+  
+  if (nrow(df) == 0) {
+    return(tibble::tibble(
+      Metric = character(), Value = numeric(), Description = character()
+    ))
+  }
+
+  # --- 2. Overall Network Metrics (Total System) ---
+  n_donors_total <- dplyr::n_distinct(df$donor)
+  n_recipients_total <- dplyr::n_distinct(df$recipient)
+  n_links_total <- dplyr::n_distinct(df$link_id)
+  max_links_total <- n_donors_total * n_recipients_total
+  
+  overall_density <- n_links_total / max_links_total
+
+  # --- 3. Core Network Metrics (System Granularity) ---
+  core_links_df <- df |>
+    dplyr::group_by(link_id) |>
+    dplyr::summarise(total_link_amount = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
+    dplyr::filter(total_link_amount >= core_threshold)
+  
+  n_core_links <- nrow(core_links_df)
+  core_density <- n_core_links / max_links_total
+  
+  # Granularity: Ratio of core links to all existing links
+  granularity <- n_core_links / n_links_total
+  
+  # --- 4. Time Trend Analysis (Density by Year) ---
+  density_by_year <- df |>
+    dplyr::filter(!is.na(budgetYear)) |>
+    dplyr::group_by(year = as.integer(budgetYear)) |>
+    dplyr::summarise(
+      n_donors_y = dplyr::n_distinct(donor),
+      n_recipients_y = dplyr::n_distinct(recipient),
+      n_links_y = dplyr::n_distinct(link_id),
+      max_links_y = n_donors_y * n_recipients_y,
+      Density_by_Year = n_links_y / max_links_y,
+      .groups = "drop"
+    ) |>
+    dplyr::select(year, Density_by_Year)
+
+  # --- 5. Compile Results ---
+  results_summary <- tibble::tibble(
+    Metric = c("Overall Density", "Core Density", "Granularity"),
+    Value = c(overall_density, core_density, granularity),
+    Description = c(
+      "Ratio of unique Donor-Recipient links to all possible links (Total System).",
+      paste0("Density based only on links that exceed the $", scales::comma(core_threshold), " threshold (Core System)."),
+      "Ratio of Core Links to Total Existing Links (measures concentration of funding significance)."
+    )
+  )
+  
+  return(list(
+    Summary_Metrics = results_summary,
+    Density_Trend = density_by_year
+  ))
+}
+```
+  
+```{r example-analysis_systemic_network_insights, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+
+network_insights <- analysis_systemic_network_insights(flows)
+
+density_trend_data <- network_insights$Density_Trend
+
+
+ggplot2::ggplot(network_insights$Density_Trend, ggplot2::aes(x = year, y = Density_by_Year)) +
+  ggplot2::geom_line(color = "#4361EE", size = 1.2) +
+  ggplot2::geom_point(color = "#4361EE", size = 3) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, linetype = "dashed", 
+              color = "grey50") +
+  ggplot2::scale_y_continuous(labels = scales::percent, 
+                              limits = c(0, 
+            max(network_insights$Density_Trend$Density_by_Year) * 1.1)) +
+  ggplot2::scale_x_continuous(breaks = unique(network_insights$Density_Trend$year)) +
+  ggplot2::labs(
+    title = "Evolution of Funding Network Connectivity (Donor-Recipient Density)",
+    subtitle = "Tracking the percentage of possible donor-recipient links that 
+    were actually funded each year.",
+    x = "Year",
+    y = "Network Density (%)",
+    caption = paste0(
+    "Indicator interpretation:",
+    "This visualization tracks the **Network Density** of the funding ecosystem
+    over time. Density is a measure of **connectivity**: it represents the
+    percentage of all theoretically possible unique donor-to-recipient
+    relationships that actually received funding in a given year. 
+    The dashed line shows the long-term trend.",
+    "\n\n",
+    
+    "An **increasing density trend** suggests the ecosystem is becoming more
+    distributed and interconnected, which may reduce risk reliance on a few key
+    links. A **decreasing density trend** suggests the network is retracting or
+    consolidating. 
+    This helps us assess the maturity and fragmentation of the funding system.", 
+    "\n\n",
+    
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")  ) +
+  unhcrthemes::theme_unhcr(
+    grid = "Y",
+    axis = TRUE,
+    axis_title = TRUE,
+    legend = FALSE
+  )
+
+```
+  
+```{r tests-analysis_systemic_network_insights}
+test_that("analysis_systemic_network_insights works", {
+  expect_true(inherits(analysis_systemic_network_insights, "function")) 
 })
 ```
 
 
 # analysis_portfolio_scores
     
-
-  
 ```{r function-analysis_portfolio_scores}
 #' Compute Portfolio Scores for a Recipient
 #'
 #' Computes a portfolio score for each donor relative to a given recipient
 #' using the formula:
 #'
-#' Portfolio_Score = SUM( Donor_engagement * 
-#'                        Funding_amount * 
+#' Portfolio_Score = SUM( Donor_engagement *
+#'                        Funding_amount *
 #'                        (1 - Donor_concentration_risk) *
 #'                         Strategic_alignment )
 #'
 #' Where:
-#' - Donor_engagement = fraction of years the donor funded the recipient (0–1)
-#' - Funding_amount = sum(amountUSD) from donor → recipient
-#' - Donor_concentration_risk = HHI of donor across destinations (0–1) 
-#' [higher = more concentrated => more risk]
-#' - Strategic_alignment = share of donor funding to the recipient's primary 
-#' GlobalCluster (0–1) — best-effort derived
+#' - Donor_engagement = fraction of years the donor funded the recipient (0-1)
+#' - Funding_amount = sum(amountUSD) from donor -> recipient
+#' - Donor_concentration_risk = HHI of donor across destinations (0-1)
+#' higher = more concentrated implies more risk
+#' - Strategic_alignment = share of donor funding to the recipient's primary
+#' GlobalCluster (0-1) - best-effort derived
 #'
 #' Assumptions & notes:
-#' - `recipient` is matched against `destinationObjects.name` 
+#' - `recipient` is matched against `destinationObjects.name`
 #' (destination type "Location" or "Organization" or "Plan").
 #' - strategic alignment is computed by comparing GlobalCluster names present in
 #'  destinationObjects for the recipient vs donor.
 #' - HHI is calculated per donor across all destination names (locations/plans).
 #'
-#' @param flows Dataframe `flows` as documented (must include sourceObjects, 
+#' @param flows Dataframe `flows` as documented (must include sourceObjects,
 #' destinationObjects, amountUSD, budgetYear).
-#' @param recipient Character scalar — recipient destination name to score 
+#' @param recipient_name Character scalar - recipient destination name to score
 #' donors for (match exactly).
-#' @param top_n Optional integer — return only top N donors by portfolio score
+#' @param top_n Optional integer - return only top N donors by portfolio score
 #'  (default NULL = all).
 #'
-#' @return Tibble with columns: donor, donor_engagement, funding_amount, 
+#' @return Tibble with columns: donor, donor_engagement, funding_amount,
 #' donor_concentration_risk, strategic_alignment, Portfolio_Score
 #' @importFrom dplyr select filter group_by summarise mutate arrange desc left_join pull rename n_distinct
 #' @importFrom tidyr unnest
-#' @importFrom purrr map_chr
+#' @importFrom purrr map_chr map_lgl
 #' @importFrom stats na.omit
 #' @export
-analysis_portfolio_scores <- function(flows, recipient, top_n = NULL) {
-  # prepare donors -> recipient flows
-  df <- flows |>
+analysis_portfolio_scores <- function(flows,
+                                      recipient_name,
+                                      top_n = 10) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Prepare Donors -> All Destinations (df) ---
+  # Unnest sourceObjects to get donor name, filter to organizations
+  df_base <- flows |>
     tidyr::unnest(sourceObjects, names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
-    dplyr::rename(donor = sourceObjects_name) |>
+    dplyr::rename(donor = sourceObjects_name)
+
+  # Unnest destinationObjects to get all destinations/clusters per flow,
+  # keeping the original flow structure for subsequent filtering and grouping.
+  df <- df_base |>
     tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::rename(destination = destinationObjects_name, destination_type = destinationObjects_type) |>
-    dplyr::filter(destination_type %in% c("Location", "Organization", "Plan"))
-  
-  # donor -> recipient aggregated
+    dplyr::rename(destination = destinationObjects_name,
+                  destination_type = destinationObjects_type)
+
+  # --- 2. Donor -> Recipient Aggregated (dr) & Donor Engagement ---
   dr <- df |>
-    dplyr::filter(destination == recipient) |>
+    dplyr::filter(destination == recipient_name) |>
     dplyr::group_by(donor) |>
     dplyr::summarise(
       funding_amount = sum(as.numeric(amountUSD), na.rm = TRUE),
       years_funded = dplyr::n_distinct(budgetYear[amountUSD > 0]),
       .groups = "drop"
     )
-  
-  # donor engagement (fraction of years donor active in dataset that include recipient)
+
+  # donor engagement (fraction of years donor active in dataset)
   donor_years <- df |>
     dplyr::group_by(donor) |>
     dplyr::summarise(total_years = dplyr::n_distinct(budgetYear),
                      .groups = "drop")
-  
+
   dr <- dr |>
     dplyr::left_join(donor_years, by = "donor") |>
     dplyr::mutate(donor_engagement = ifelse(total_years > 0, years_funded / total_years, 0))
-  
-  # donor concentration risk (HHI across destinations for each donor)
+
+  # --- 3. Donor Concentration Risk (HHI) ---
+  # HHI across all destinations (locations/plans/organizations) for each donor
   donor_hhi <- df |>
     dplyr::group_by(donor, destination) |>
     dplyr::summarise(total = sum(as.numeric(amountUSD), na.rm = TRUE),
                      .groups = "drop_last") |>
     dplyr::mutate(share = total / sum(total, na.rm = TRUE)) |>
     dplyr::summarise(HHI = sum(share^2, na.rm = TRUE), .groups = "drop")
-  
+
   # normalize HHI to 0-1 (already 0-1) but ensure numeric
   donor_hhi <- donor_hhi |>
     dplyr::mutate(donor_concentration_risk = pmin(pmax(HHI, 0), 1)) |>
     dplyr::select(donor, donor_concentration_risk)
-  
-  # strategic alignment: best-effort — find top GlobalCluster (destinationObjects_type == "GlobalCluster") for recipient,
-  # then compute share of donor funding to that cluster
-  # extract recipient clusters
+
+  # --- 4. Strategic Alignment ---
+  # Correctly extract clusters associated with the recipient
   recipient_clusters <- flows |>
+    # For each flow, check if the recipient is listed in destinationObjects
+    dplyr::filter(purrr::map_lgl(destinationObjects, ~ recipient_name %in% .x$name)) |>
+    # From those flows, unnest to get all destination objects
     tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::filter(
-      destinationObjects_name == recipient &
-        destinationObjects_type %in% c("GlobalCluster", "Cluster")
-    ) |>
+    # Filter for objects that are clusters
+    dplyr::filter(destinationObjects_type %in% c("GlobalCluster", "Cluster")) |>
+    # Get the unique cluster names
     dplyr::pull(destinationObjects_name) |>
     unique()
-  
+
   # compute donor->cluster shares
   if (length(recipient_clusters) == 0) {
     # fallback: set strategic_alignment to donor's share to recipient / donor total (i.e., relative focus)
-    donor_total <- df |>
+    donor_total <- df_base |> # Use df_base (donor->flow level) to ensure total funding is correct
       dplyr::group_by(donor) |>
       dplyr::summarise(donor_total = sum(as.numeric(amountUSD), na.rm = TRUE),
                        .groups = "drop")
-    
+
     dr <- dr |>
       dplyr::left_join(donor_total, by = "donor") |>
       dplyr::mutate(strategic_alignment = ifelse(donor_total > 0, funding_amount / donor_total, 0))
   } else {
-    donor_cluster <- df |>
-      dplyr::filter(destinationObjects_type %in% c("GlobalCluster", "Cluster")) |>
+    # FIX: Use the 'df' dataframe which correctly exposes 'destination_type'
+    # after the final unnesting and rename in the setup (which is 'destination_type' in the current df).
+    # Wait, the column is 'destination_type' but it is *not* what's needed for the cluster filtering.
+    # The error 'object 'destinationObjects_type' not found' means it was lost/renamed.
+    # Let's use 'df_base' and unnest just for the cluster calculation to ensure the column name is correct.
+
+    donor_cluster_flow <- df_base |>
+      tidyr::unnest(destinationObjects, names_sep = "_")
+
+    donor_cluster <- donor_cluster_flow |>
+      dplyr::filter(destinationObjects_type %in% c("GlobalCluster", "Cluster")) |> # This column exists here
       dplyr::group_by(donor, destinationObjects_name) |>
       dplyr::summarise(total = sum(as.numeric(amountUSD), na.rm = TRUE),
                        .groups = "drop_last") |>
@@ -190,12 +471,13 @@ analysis_portfolio_scores <- function(flows, recipient, top_n = NULL) {
       dplyr::group_by(donor) |>
       dplyr::summarise(strategic_alignment = sum(share, na.rm = TRUE),
                        .groups = "drop")
-    
+
     dr <- dr |>
       dplyr::left_join(donor_cluster, by = "donor") |>
       dplyr::mutate(strategic_alignment = ifelse(is.na(strategic_alignment), 0, strategic_alignment))
   }
-  
+
+  # --- 5. Calculate Portfolio Score ---
   res <- dr |>
     dplyr::left_join(donor_hhi, by = "donor") |>
     dplyr::mutate(
@@ -207,17 +489,56 @@ analysis_portfolio_scores <- function(flows, recipient, top_n = NULL) {
       Portfolio_Score = donor_engagement * funding_amount * (1 - donor_concentration_risk) * strategic_alignment
     ) |>
     dplyr::arrange(dplyr::desc(Portfolio_Score))
-  
+
   if (!is.null(top_n))
     res <- res |> dplyr::slice_head(n = top_n)
   return(res)
 }
 ```
   
-```{r example-analysis_portfolio_scores}
-analysis_portfolio_scores(flows, 
-               recipient="United Nations High Commissioner for Refugees", 
+```{r example-analysis_portfolio_scores, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+scores <- analysis_portfolio_scores(flows, 
+               recipient_name="United Nations High Commissioner for Refugees", 
                           top_n = 10)
+
+ggplot2::ggplot(scores, ggplot2::aes(x = reorder(donor, Portfolio_Score), 
+                                     y = Portfolio_Score)) +
+  ggplot2::geom_col( ggplot2::aes(fill = Portfolio_Score)) +
+  ggplot2::coord_flip() +
+  ggplot2::labs(title = "Donor Portfolio Scores for UNHCR", 
+       subtitle = "Measure of the combined quality, consistency, and strategic 
+       alignment of a donor's funding relationship",
+       x = "Donor", y = "Portfolio Score",
+       caption = paste(
+    "Indicator interpretation:",
+    "The **Portfolio Score**  is calculated as: **Donor Engagement** $\\times$ 
+    **Funding Amount** $\\times$ (1 - **Donor Concentration Risk**) $\\times$ 
+    **Strategic Alignment**. A higher score indicates a more valuable and 
+    reliable funding partner for the recipient.",
+    "\n\n",
+    
+    " The total bar 
+    length represents the Portfolio Score, which is driven by four components: 
+    **Donor Engagement** (consistency of giving over time), **Funding Amount** 
+    (total USD provided), **Donor Concentration Risk** (inverse of funding 
+    diversification across all destinations), and **Strategic Alignment** 
+    (share of donor funding aligned with the recipient's primary Global 
+    Clusters).",
+    "\n\n",
+    
+    "Humanitarian relevance:",
+    "Identifies key and potentially most reliable donors whose funding 
+    relationship is both substantial and strategically aligned with the
+    recipient's mandate. It helps the recipient organization prioritize 
+    relationship management and provides donors with a metric to assess the
+    quality of their long-term partnerships.", 
+    "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+    ggplot2::scale_y_continuous(
+      labels = scales::label_number(scale_cut = scales::cut_short_scale())
+    ) +
+  unhcrthemes::theme_unhcr(grid = "X", axis =  "Y", axis_title = FALSE,
+                           legend=FALSE)  
 ```
   
 ```{r tests-analysis_portfolio_scores}
@@ -231,7 +552,7 @@ test_that("analysis_portfolio_scores works", {
 ```{r function-analysis_prepare_opportunity_dataset}
 #' Prepare Funding Opportunity Dataset
 #'
-#' Aggregates flows into donor–recipient–year observations and prepares features
+#' Aggregates flows into donor-recipient-year observations and prepares features
 #' for an opportunity prediction model. Features include:
 #'  - donor funding cycle timing (mean decision month)
 #'  - historical funding patterns (growth in recent years)
@@ -242,20 +563,24 @@ test_that("analysis_portfolio_scores works", {
 #'
 #' @param flows Dataframe `flows`.
 #' @param lookback_years Integer number of past years to compute trends (default 3).
-#' @param crisis_keywords Character vector of keywords to flag global events (default common terms).
+#' @param crisis_keywords Character vector of keywords to flag global events 
+#' (default common terms).
 #'
 #' @return A tibble of donor, recipient, year, and features.
-#' @importFrom dplyr select mutate group_by summarise left_join arrange pull rename
+#' @importFrom dplyr select mutate group_by summarise left_join arrange pull rename if_else lag n
 #' @importFrom tidyr unnest
-#' @importFrom lubridate ymd year month
+#' @importFrom lubridate ymd year month ymd_hms
 #' @importFrom stringr str_detect str_to_lower
 #' @export
 analysis_prepare_opportunity_dataset <- function(
     flows,
     lookback_years = 3,
-    crisis_keywords = c("flood", "drought", "earthquake", "conflict", "epidemic")) {
+    crisis_keywords = c("refugees", "refugee","displacement", "displaced",
+                         "returnees","idps",
+                        "protection", "conflict", "vulnerable")) {
   
-  # unnest donors/destinations
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Prepare Base Data (df) ---
   df <- flows |>
     tidyr::unnest(sourceObjects, names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
@@ -265,29 +590,37 @@ analysis_prepare_opportunity_dataset <- function(
     dplyr::filter(dest_type %in% c(
       "Location",
       "Organization",
-      "Plan",
-      "GlobalCluster",
-      "Cluster"
+      "GlobalCluster"
     )) |>
     dplyr::mutate(
       amountUSD = as.numeric(amountUSD),
-      decision_dt = suppressWarnings(lubridate::ymd_hms(decisionDate)),
-      decision_dt = ifelse(
-        is.na(decision_dt),
-        suppressWarnings(lubridate::ymd(decisionDate)),
-        decision_dt
+      # Attempt to parse as datetime first
+      decision_dt_hms = suppressWarnings(lubridate::ymd_hms(decisionDate)),
+      # Attempt to parse as date second
+      decision_dt_ymd = suppressWarnings(lubridate::ymd(decisionDate)),
+      # Combine, prioritizing POSIXct (ymd_hms)
+      # FIX: Use dplyr::if_else() or explicit logic to maintain date/time class
+      decision_dt = dplyr::if_else(
+        !is.na(decision_dt_hms),
+        decision_dt_hms,
+        as.POSIXct(decision_dt_ymd) # Convert Date to POSIXct for consistent column type
       )
     ) |>
-    dplyr::mutate(decision_month = as.integer(lubridate::month(decision_dt)),
-                  year = as.integer(budgetYear))
+    # Separate step to extract month/year from the correctly typed decision_dt
+    dplyr::mutate(
+      decision_month = as.integer(lubridate::month(decision_dt)),
+      year = as.integer(budgetYear)
+    ) |>
+    dplyr::select(-decision_dt_hms, -decision_dt_ymd) # Clean up temp columns
   
-  # basic per donor-recipient-year features
+  # --- 2. Per Donor-Recipient-Year Features (base) ---
   base <- df |>
     dplyr::group_by(donor, recipient, year) |>
     dplyr::summarise(
       total_amount = sum(amountUSD, na.rm = TRUE),
       n_flows = dplyr::n(),
       avg_decision_month = mean(decision_month, na.rm = TRUE),
+      # Calculate flag for flows that have a crisis keyword in description
       crisis_flag = mean(
         stringr::str_detect(
           stringr::str_to_lower(description),
@@ -298,45 +631,100 @@ analysis_prepare_opportunity_dataset <- function(
       .groups = "drop"
     )
   
-  # compute recent growth (percent change) using lookback_years
+  # --- 3. Compute Recent Growth (growth) ---
   growth <- base |>
     dplyr::group_by(donor, recipient) |>
     dplyr::arrange(year) |>
     dplyr::mutate(
-      lag_amount = dplyr::lag(total_amount, lookback_years),
-      pct_growth = ifelse(
-        !is.na(lag_amount) &
-          lag_amount > 0,
+      lag_amount = dplyr::lag(total_amount, n = lookback_years, order_by = year),
+      pct_growth = dplyr::if_else( # Use if_else for type safety
+        !is.na(lag_amount) & lag_amount > 0,
         (total_amount - lag_amount) / lag_amount,
         NA_real_
       )
     ) |>
+    dplyr::select(-lag_amount) |>
     dplyr::ungroup()
   
-  # sector trends: share to GlobalCluster if available in destinationObjects
+  # --- 4. Sector Trends: Max Cluster Share (cluster_share) ---
+  # Only focus on flows to GlobalCluster/Cluster destinations
   cluster_share <- df |>
     dplyr::filter(dest_type %in% c("GlobalCluster", "Cluster")) |>
-    dplyr::group_by(donor, recipient, year, destinationObjects_name) |>
-    dplyr::summarise(cluster_amount = sum(amountUSD, na.rm = TRUE),
-                     .groups = "drop") |>
+    # Calculate the total amount a donor gave to a specific cluster in a year
     dplyr::group_by(donor, recipient, year) |>
-    dplyr::mutate(cluster_share = cluster_amount / sum(cluster_amount, na.rm = TRUE)) |>
-    dplyr::summarise(max_cluster_share = max(cluster_share, na.rm = TRUE),
-                     .groups = "drop")
+    dplyr::mutate(yearly_donor_funding = sum(amountUSD, na.rm = TRUE)) |>
+    dplyr::ungroup() |>
+    
+    # Now group by the specific cluster destination
+    dplyr::group_by(donor, year, recipient) |>
+    dplyr::summarise(
+      total_funding_to_recipient = sum(amountUSD, na.rm = TRUE),
+      total_donor_funding_in_year = unique(yearly_donor_funding), # Total donor funding to *all* destinations this year
+      .groups = "drop_last"
+    ) |>
+    # Compute the share of total annual donor funding that went to this recipient (cluster)
+    dplyr::mutate(
+      cluster_share = total_funding_to_recipient / total_donor_funding_in_year
+    ) |>
+    # Find the maximum share across all clusters for that donor-recipient-year
+    dplyr::group_by(donor, recipient, year) |>
+    dplyr::summarise(
+      max_cluster_share = max(cluster_share, na.rm = TRUE),
+      .groups = "drop"
+    )
   
+  # --- 5. Final Join and Return ---
   res <- growth |>
-    dplyr::left_join(cluster_share, by = c("donor", "recipient", "year"))
+    dplyr::left_join(cluster_share, by = c("donor", "recipient", "year")) |>
+    # Ensure max_cluster_share is 0 if no clusters were found for that DR-Y combination
+    dplyr::mutate(max_cluster_share = dplyr::if_else(is.na(max_cluster_share), 0, max_cluster_share))
   
   return(res)
 }
 ```
   
-```{r example-analysis_prepare_opportunity_dataset}
-analysis_prepare_opportunity_dataset( flows,
+```{r example-analysis_prepare_opportunity_dataset, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+crisis_keywords = c("refugees", "refugee","displacement", "displaced",
+                         "returnees","idps",
+                        "protection", "conflict", "vulnerable")
+
+features <- analysis_prepare_opportunity_dataset( flows,
     lookback_years = 3,
-    crisis_keywords = c("flood", "drought", 
-                        "earthquake", "conflict", "epidemic")
-)
+    crisis_keywords = crisis_keywords)
+
+# Filter for non-NA growth, arrange by descending growth, and take the top 5.
+label_data_top <- features |>
+  dplyr::filter(!is.na(pct_growth)) |>
+  dplyr::arrange(dplyr::desc(pct_growth)) |>
+  dplyr::slice_head(n = 3) |>
+  dplyr::mutate(donor_wrapped = stringr::str_wrap(paste0(donor, " --> ",
+                                                  recipient),
+                                           width = 45))
+
+
+ggplot2::ggplot(features, ggplot2::aes(x = total_amount, y = pct_growth/100)) +
+  ggplot2::geom_point(alpha = 0.5) +
+  ggrepel::geom_text_repel(  data = label_data_top, 
+                             ggplot2::aes(label = donor_wrapped), 
+    size = 2.5, segment.color = 'grey50', 
+    min.segment.length = 0, box.padding = 0.5 ) +
+  ggplot2::scale_x_log10(
+      labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+  ggplot2::scale_y_continuous(labels = scales::label_percent()  ) +
+  ggplot2::labs(
+    title = "Funding Opportunity Analysis: Amount vs. Growth",
+    subtitle = paste0(
+            "Focusing on the following keywords within project description: ",
+            paste(crisis_keywords, collapse = ", ")
+        ),
+    x = "Total Amount (log scale)",
+    y = "Percentage Growth",
+    caption= paste0(
+      "Indicator interpretation: Points in the top-right quadrant indicate 
+      high-value future opportunities.", "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+  unhcrthemes::theme_unhcr(grid = TRUE, axis = TRUE, 
+                           axis_title = TRUE, legend = TRUE)  
 ```
   
 ```{r tests-analysis_prepare_opportunity_dataset}
@@ -353,12 +741,14 @@ test_that("analysis_prepare_opportunity_dataset works", {
 #' Fits a logistic regression to predict whether a donor will fund a recipient
 #' in year t+1 based on features prepared by `prepare_opportunity_dataset()`.
 #'
-#' Label construction: response = 1 if total_amount > 0 in year t+1 for same donor–recipient.
+#' Label construction: response = 1 if total_amount > 0 in year t+1 for 
+#' same donor-recipient.
 #'
-#' @param features Dataframe produced by analysis_prepare_opportunity_dataset().
+#' @param features Dataframe produced by `analysis_prepare_opportunity_dataset()`.
 #' @param min_year Minimum year to use for training (filters older data).
 #'
-#' @return A glm object (binomial) and the training frame (list with components model, data).
+#' @return A glm object (binomial) and the training frame 
+#' (list with components model, data).
 #' @importFrom dplyr group_by arrange lead left_join
 #' @export
 analysis_fit_opportunity_model <- function(features, min_year = NULL) {
@@ -392,7 +782,7 @@ analysis_fit_opportunity_model <- function(features, min_year = NULL) {
   train <- train |> stats::na.omit()
   
   if (nrow(train) < 50) {
-    warning("Fewer than 50 training rows — model may be unstable.")
+    warning("Fewer than 50 training rows - model may be unstable.")
   }
   
   # fit a simple logistic model
@@ -406,8 +796,39 @@ analysis_fit_opportunity_model <- function(features, min_year = NULL) {
 }
 ```
   
-```{r example-analysis_fit_opportunity_model}
-analysis_fit_opportunity_model(features, min_year = NULL)
+```{r example-analysis_fit_opportunity_model, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+features <- analysis_prepare_opportunity_dataset(flows)
+model_results <- analysis_fit_opportunity_model(features, min_year = NULL)
+train_data <- model_results$train
+model <- model_results$model
+train_data$predicted_prob <- predict(model, newdata = train_data, type = "response")
+
+ggplot2::ggplot(train_data, 
+                ggplot2::aes(x = predicted_prob, fill = factor(opportunity))) +
+  ggplot2::geom_density(alpha = 0.5) +
+  ggplot2::scale_y_continuous(
+      labels = scales::label_number(scale_cut = scales::cut_short_scale())
+    ) +
+  ggplot2::scale_x_continuous(
+      labels = scales::label_number(scale_cut = scales::cut_short_scale())
+    ) +
+  ggplot2::labs(title = "Ability to forecast potential funding streams based on previous years",
+    subtitle = "Comparing the probability score assigned by the model against the
+    actual outcome \n (Funding Occurred = 1, No Funding = 0).",
+       x = "Predicted Probability",
+       fill = "Actual Opportunity",
+    caption = paste0("The X-axis shows the **Predicted Probability**
+    (a score from 0 to 1) that a donor will fund a recipient in the next year. 
+    The two colored curves show the distribution of this score based on the 
+    **Actual Outcome** for that relationship-year observation:  **Blue Curve
+    (0: No Funding):** Represents relationships where the donor *did not* fund
+    the recipient next year. Most of these probabilities should cluster near 0.
+    **Red Curve (1: Funding Occurred):** Represents relationships where 
+    the donor *did* fund the recipient next year. 
+    Most of these probabilities should cluster near 1.",
+    "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+  unhcrthemes::theme_unhcr(grid = TRUE, axis =  TRUE, axis_title = TRUE, legend=TRUE)  
 ```
   
 ```{r tests-analysis_fit_opportunity_model}
@@ -430,12 +851,10 @@ test_that("analysis_fit_opportunity_model works", {
 #'  - Peer_encroachment = sum(peer_growth_in_our_core_sectors)
 #'
 #' @param flows Dataframe `flows`.
-#' @param our_org Character name of our organization as appears
+#' @param recipient_name Character name of our organization as appears
 #'  in destinationObjects.name (type Organization).
 #' @param peers Optional character vector of peer organization names. 
 #' If NULL peers are all other organizations in destinationObjects.
-#' @param sector_level Destination cluster type to use for 
-#'                   sectors: "GlobalCluster"
 #'
 #' @return Tibble with sector-level and aggregated competitive indicators
 #'  and a composite Competitive_Position score.
@@ -443,52 +862,66 @@ test_that("analysis_fit_opportunity_model works", {
 #' @importFrom tidyr unnest
 #' @export
 analysis_competitive_intel_matrix <- function(flows,
-                                              our_org,
-                                              peers = NULL,
-                                              sector_level = "GlobalCluster") {
+                                              recipient_name,
+                                              peers = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
   df <- flows |>
+    dplyr::mutate(originaldestinationObjects = destinationObjects,
+                  originalsourceObjects = sourceObjects) |>
     tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::filter(destinationObjects_type %in% c("Organization", sector_level)) |>
+    dplyr::filter(destinationObjects_type %in% c("Organization", "GlobalCluster")) |>
     dplyr::rename(dest_name = destinationObjects_name, dest_type = destinationObjects_type)
   
   # Identify sectors per flow. We'll treat rows with dest_type == sector_level as sector labels.
   # Build flow-level table mapping sector (if present) to flow. If no sector present, NA.
   # Create a combined view with source donor info
   df2 <- flows |>
+    dplyr::mutate(originaldestinationObjects = destinationObjects,
+                  originalsourceObjects = sourceObjects) |>
     tidyr::unnest(sourceObjects, names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
     dplyr::rename(donor = sourceObjects_name) |>
     tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::rename(destination = destinationObjects_name, dest_type = destinationObjects_type) |>
+    dplyr::rename(destination = destinationObjects_name, 
+                  dest_type = destinationObjects_type) |>
     dplyr::mutate(amountUSD = as.numeric(amountUSD))
   
-  # derive sector column: prefer GlobalCluster/Cluster entries (destinationObjects_type)
+  # derive sector column
+    # dput(levels(factor(df2$dest_type)))
+    # dput(levels(factor(df2$dest_type)))
   df2 <- df2 |>
-    dplyr::mutate(sector = ifelse(
-      dest_type %in% c("GlobalCluster", "Cluster"),
+    dplyr::mutate(sector = dplyr::if_else(
+      dest_type =="GlobalCluster",
       destination,
       NA_character_
     ))
   
-  # propagate sector across rows by grouping on id (flows may contain multiple destinationObjects; best-effort)
-  # For simplicity aggregate by donor, destination (organization) and sector where sector not NA
+  # dput(levels(factor(df2$sector)))
+  # propagate sector across rows by grouping on id 
+  # (flows may contain multiple destinationObjects; best-effort)
+  # For simplicity aggregate by donor, destination (organization) 
+  # and sector where sector not NA
   sector_flows <- df2 |>
     dplyr::filter(!is.na(sector)) |>
     dplyr::group_by(sector) |>
     dplyr::summarise(total_sector = sum(amountUSD, na.rm = TRUE),
                      .groups = "drop")
   
+  
   # our funding by sector
+  # dput(levels(factor(df2$destination)))
   our_sector <- df2 |>
-    dplyr::filter(destination == our_org & !is.na(sector)) |>
+    dplyr::filter(destination == recipient_name) |> 
+    dplyr::filter(destination == recipient_name & !is.na(sector)) |> 
     dplyr::group_by(sector) |>
     dplyr::summarise(our_funding = sum(amountUSD, na.rm = TRUE),
                      .groups = "drop")
   
-  # peers: all orgs except our_org if peers NULL
+  # peers: all orgs except recipient_name if peers NULL
   if (is.null(peers)) {
     peers <- df2 |> dplyr::pull(destination) |> unique()
-    peers <- setdiff(peers, our_org)
+    peers <- setdiff(peers, recipient_name)
   }
   
   # peer growth: compute year-over-year growth in sector funding for peers
@@ -508,7 +941,7 @@ analysis_competitive_intel_matrix <- function(flows,
   
   # our_growth per sector
   our_growth <- df2 |>
-    dplyr::filter(destination == our_org & !is.na(sector)) |>
+    dplyr::filter(destination == recipient_name & !is.na(sector)) |>
     dplyr::group_by(sector, year = as.integer(budgetYear)) |>
     dplyr::summarise(amount = sum(amountUSD, na.rm = TRUE),
                      .groups = "drop") |>
@@ -520,8 +953,8 @@ analysis_competitive_intel_matrix <- function(flows,
     dplyr::summarise(our_avg_growth = mean(growth, na.rm = TRUE),
                      .groups = "drop")
   
-  # compute market share, growth differential, diversity (HHI) and peer encroachment
-  # market share
+  # compute market share, growth differential, diversity (HHI) and
+  # peer encroachment  market share
   market <- sector_flows |>
     dplyr::left_join(our_sector, by = "sector") |>
     dplyr::left_join(our_growth, by = "sector") |>
@@ -532,9 +965,9 @@ analysis_competitive_intel_matrix <- function(flows,
       growth_differential = our_avg_growth - peer_avg_growth
     )
   
-  # funding diversity for our org: HHI across donors funding our_org
+  # funding diversity for our org: HHI across donors funding recipient_name
   donors_to_our <- df2 |>
-    dplyr::filter(destination == our_org) |>
+    dplyr::filter(destination == recipient_name) |>
     dplyr::group_by(donor) |>
     dplyr::summarise(total = sum(amountUSD, na.rm = TRUE),
                      .groups = "drop") |>
@@ -558,11 +991,37 @@ analysis_competitive_intel_matrix <- function(flows,
 }
 ```
   
-```{r example-analysis_competitive_intel_matrix}
-analysis_competitive_intel_matrix(flows,
-                                              our_org,
-                                              peers = NULL,
-                                              sector_level = "GlobalCluster")
+```{r example-analysis_competitive_intel_matrix, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+recipient_name <- "United Nations High Commissioner for Refugees"
+
+matrix_data <- analysis_competitive_intel_matrix(flows,
+                                              recipient_name,
+                                              peers = NULL)
+ggplot2::ggplot(matrix_data, ggplot2::aes(x = market_share, 
+                                          y = growth_differential)) +
+  ggplot2::geom_point(
+    ggplot2::aes(size = our_funding, color = sector), alpha = 0.7) +
+  ggplot2::geom_text(
+    ggplot2::aes(label = sector),
+            vjust = 1,
+            hjust = 1,
+            size = 3) +
+  ggplot2::scale_y_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::scale_x_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::labs(
+    title = "Competitive Intelligence Matrix",
+    x = "Market Share",
+    y = "Growth Differential",
+    size = "Our Funding",
+    caption ="**Data Source**: OCHA Financial Tracking Service (FTS) API.") +
+  unhcrthemes::theme_unhcr(
+    grid = FALSE,
+    axis =  FALSE,
+    axis_title = FALSE,
+    legend = TRUE
+  )  
 ```
   
 ```{r tests-analysis_competitive_intel_matrix}
@@ -584,17 +1043,22 @@ test_that("analysis_competitive_intel_matrix works", {
 #'  4) Strategic Partner (multi-year, flexible funding)
 #'  5) Legacy Partner (10+ years, co-design initiatives)
 #'
-#' Uses flows to compute engagement_frequency, funding_trend (slope), multiyear_share proxy, and partnership_complexity proxy.
+#' Uses flows to compute engagement_frequency, funding_trend (slope), multiyear_share proxy, and partnership_complexity proxy,
+#' scoped to a specific recipient organization.
 #'
 #' @param flows Dataframe `flows`.
-#' @param alignment_df Optional tibble with donor alignment scores (donor, alignment_score 0-1). If NULL alignment is computed as donor share to recipient sectors (best-effort).
+#' @param alignment_df Optional tibble with donor alignment scores (donor, alignment_score 0-1).
+#' @param recipient_name Character: The name of the recipient organization to filter the flows by.
 #'
 #' @return Tibble with donor, metrics and stage (factor).
 #' @importFrom dplyr select group_by summarise mutate arrange desc left_join n_distinct
 #' @importFrom tidyr unnest
 #' @importFrom stats lm coef
 #' @export
-analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL) {
+analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL, recipient_name = NULL) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Base Unnesting and Filtering ---
   df <- flows |>
     tidyr::unnest(sourceObjects, names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
@@ -603,10 +1067,26 @@ analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL) {
     dplyr::rename(destination = destinationObjects_name, dest_type = destinationObjects_type) |>
     dplyr::mutate(amountUSD = as.numeric(amountUSD))
   
+  # --- 2. Filter by Recipient Name (NEW STEP) ---
+  if (!is.null(recipient_name)) {
+    # If the function is scoped to a specific recipient, filter the data
+    df <- df |>
+      dplyr::filter(destination == recipient_name)
+    
+    if (nrow(df) == 0) {
+      warning("No flows found for the specified recipient: ", recipient_name)
+      return(tibble::tibble(donor = character(), stage = factor()))
+    }
+  }
+  
+  # --- 3. Compute Metrics (Scoped to filtered DF) ---
+  
   # engagement frequency = years with any funding
   engagement <- df |>
     dplyr::group_by(donor) |>
-    dplyr::summarise(years = dplyr::n_distinct(budgetYear), total_amount = sum(amountUSD, na.rm = TRUE), .groups = "drop")
+    dplyr::summarise(years = dplyr::n_distinct(budgetYear), 
+                     total_amount = sum(amountUSD, na.rm = TRUE), 
+                     .groups = "drop")
   
   # funding trend: slope of amount per year (aggregate)
   trend <- df |>
@@ -618,16 +1098,20 @@ analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL) {
       coef(fit)[["year"]]
     }, error = function(e) NA_real_), .groups = "drop")
   
-  # multiyear_share proxy: flows with flowType == "Parked" or parentFlowId present → assume multiyear
+  # multiyear_share proxy: flows with flowType == "Parked" or parentFlowId present -> assume multiyear
   multi <- df |>
     dplyr::group_by(donor) |>
     dplyr::summarise(multiyear_share = sum(ifelse(flowType %in% c("Parked"), as.numeric(amountUSD), 0), na.rm = TRUE) / sum(as.numeric(amountUSD), na.rm = TRUE), .groups = "drop")
   
   # partnership_complexity proxy: number of distinct destination types or sectors engaged
+  # Note: Since we filtered by recipient_name, the complexity will be 1 (the recipient itself)
+  # unless the data structure allows for multiple sub-destinations per flow. 
+  # We keep the original logic, which counts distinct destinations.
   complexity <- df |>
     dplyr::group_by(donor) |>
     dplyr::summarise(partnership_complexity = dplyr::n_distinct(destination), .groups = "drop")
   
+  # --- 4. Final Join and Stage Assignment ---
   res <- engagement |>
     dplyr::left_join(trend, by = "donor") |>
     dplyr::left_join(multi, by = "donor") |>
@@ -649,12 +1133,47 @@ analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL) {
       )
     )
   res$stage <- factor(res$stage, levels = c("Prospect", "New Partner", "Growing Partner", "Strategic Partner", "Legacy Partner", "Maintenance"))
+  
   return(res)
 }
 ```
   
-```{r example-analysis_donor_lifecycle_stage}
-analysis_donor_lifecycle_stage()
+```{r example-analysis_donor_lifecycle_stage, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+recipient_name <- "United Nations High Commissioner for Refugees"
+stages <- analysis_donor_lifecycle_stage(flows, recipient_name= recipient_name )
+
+ggplot2::ggplot(stages, ggplot2::aes(x = stage)) +
+  ggplot2::geom_bar( ggplot2::aes(fill = stage)) +
+  ggplot2::coord_flip() +
+  ggplot2::labs(title = paste0("Donor Lifecycle Stages for ", recipient_name),
+       subtitle = "Based on their historical funding behavior, complexity 
+       of partnership, and alignment",
+       x = "",
+       y = "Number of Donors",
+       caption = paste(
+    "Indicator interpretation:",
+    "This visualization segments donors into specific **Lifecycle Stages** . 
+    This framework helps tailor engagement strategies to maximize potential 
+    and retention. The stages represent a progression in the relationship 
+    quality and maturity: ", 
+    "**Prospect:** High potential alignment, but hasn't provided funding yet 
+    (highest priority for first outreach). ", 
+    " **New Partner:** Recently started funding (1-2 years), establishing the 
+    relationship.",
+    " **Growing Partner:** Demonstrates increasing funding trends and engages 
+    across multiple sectors (focus on deepening the partnership). ",
+    "**Strategic Partner:** Provides multi-year or flexible funding and shows
+    high strategic alignment (focus on co-design and long-term goals). ",
+    "**Legacy Partner:** Long-term partners (10+ years of funding), 
+    foundational to our operations. ",
+    "**Maintenance:** Donors that do not fit the criteria for active 
+    growth stages (focus on efficient retention).",
+    "\n\n",
+    
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API Data."
+)) +
+  unhcrthemes::theme_unhcr(grid = "X", axis = "Y", axis_title = TRUE, 
+                           legend=FALSE)   
 ```
   
 ```{r tests-analysis_donor_lifecycle_stage}
@@ -679,37 +1198,73 @@ test_that("analysis_donor_lifecycle_stage works", {
 #' Uses Engagement_Index, Alignment_Index, Growth_Potential computed from flows.
 #'
 #' @param flows Dataframe `flows`.
-#' @param our_org Character name of our org (to compute "under-resourced" signals).
+#' @param recipient_name Character name of our org (to compute "under-resourced" signals).
 #'
 #' @return Tibble with donor and assigned segment plus Resource_Allocation_Score.
 #' @importFrom dplyr select group_by summarise mutate left_join
 #' @export
-analysis_donor_segmentation <- function(flows, our_org) {
-  # compute engagement index (years funded normalized), alignment proxy (share to our_org sectors), growth potential (trend)
+analysis_donor_segmentation <- function(flows, recipient_name) {
+
+  
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Prepare Base Data (Donor -> Destination) ---
   df <- flows |>
-    tidyr::unnest(sourceObjects, names_sep = "_") |>
+    dplyr::mutate(destinationObjects2 = destinationObjects) |>
+    tidyr::unnest(destinationObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
     dplyr::rename(donor = sourceObjects_name) |>
-    tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::rename(destination = destinationObjects_name, dest_type = destinationObjects_type) |>
-    dplyr::mutate(amountUSD = as.numeric(amountUSD))
+    tidyr::unnest(destinationObjects2,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects2_type == "Organization")|>
+    dplyr::mutate(amountUSD = as.numeric(amountUSD))|>
+    dplyr::rename(recipient = destinationObjects2_name) 
   
+  # --- 2. Filter by Recipient Name  ---
+  # If recipient_name is provided, filter the flows.
+  # Note: The original 'recipient' column name is now 'destination'.
+  if (!is.null(recipient_name)) {
+    df <- df |>
+      dplyr::filter(recipient == recipient_name)
+    
+    if (nrow(df) == 0) {
+      warning("No flows found for the specified recipient/destination: ", recipient_name)
+      return(list(graph = NULL, donor_metrics = NULL, destination_metrics = NULL))
+    }
+    
+    # If filtered to one destination, we don't need 'top_n' for destinations, 
+    # but we still calculate donor metrics based on the filtered edges.
+  }
+  
+   # compute engagement index (years funded normalized), alignment proxy (share to recipient_name sectors), growth potential (trend)
   engagement <- df |>
     dplyr::group_by(donor) |>
     dplyr::summarise(years = dplyr::n_distinct(budgetYear), total = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
     dplyr::mutate(engagement_index = scales::rescale(years, to = c(0,1)))
   
-  # alignment proxy: fraction of donor funding into destinations where our_org also works (same destination names)
+  # alignment proxy: fraction of donor funding into destinations where recipient_name also works (same destination names)
   our_dests <- df |>
-    dplyr::filter(destination == our_org) |>
-    dplyr::pull(destination) %>% unique()
-  # If our_org doesn't appear as a destination, fallback to sectors not implemented — set mid alignment
+    dplyr::pull(destination) |> unique()
+  
+  
   if (length(our_dests) == 0) {
     alignment_df <- engagement |> dplyr::mutate(alignment_index = 0.5)
   } else {
     donor_to_our <- df |>
       dplyr::group_by(donor) |>
-      dplyr::summarise(our_overlap = sum(amountUSD[destination %in% our_dests], na.rm = TRUE), donor_total = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
+      
+      dplyr::summarise(our_overlap = sum(amountUSD[destination %in% our_dests],
+                                         na.rm = TRUE),
+                       donor_total = sum(amountUSD, na.rm = TRUE),
+                       .groups = "drop") |>
+      
       dplyr::mutate(alignment_index = ifelse(donor_total>0, our_overlap / donor_total, 0))
     alignment_df <- donor_to_our |> dplyr::select(donor, alignment_index)
   }
@@ -733,7 +1288,8 @@ analysis_donor_segmentation <- function(flows, our_org) {
     ) |>
     dplyr::mutate(
       segment = dplyr::case_when(
-        Strategic_Priority >= quantile(Strategic_Priority, 0.9, na.rm = TRUE) & Resource_Allocation_Score > quantile(Resource_Allocation_Score, 0.5, na.rm = TRUE) ~ "Strategic Stars",
+        Strategic_Priority >= quantile(Strategic_Priority, 0.9, na.rm = TRUE) &
+          Resource_Allocation_Score > quantile(Resource_Allocation_Score, 0.5, na.rm = TRUE) ~ "Strategic Stars",
         Strategic_Priority >= quantile(Strategic_Priority, 0.7, na.rm = TRUE) ~ "Core Partners",
         Strategic_Priority >= quantile(Strategic_Priority, 0.4, na.rm = TRUE) ~ "Emerging Opportunities",
         Strategic_Priority < quantile(Strategic_Priority, 0.4, na.rm = TRUE) & total > median(total, na.rm = TRUE) ~ "Maintenance Accounts",
@@ -744,8 +1300,77 @@ analysis_donor_segmentation <- function(flows, our_org) {
 }
 ```
   
-```{r example-analysis_donor_segmentation}
-analysis_donor_segmentation()
+```{r example-analysis_donor_segmentation, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+recipient_name <-  "United Nations High Commissioner for Refugees"
+segments <- analysis_donor_segmentation(flows, recipient_name)|>
+  dplyr::filter(!is.na(total)) |> 
+  dplyr::arrange(desc(total)) |>
+  dplyr::slice_head(n = 20)
+
+label_data_top_donors <- segments |>
+  dplyr::filter(!is.na(total)) |>  
+  dplyr::arrange(desc(total)) |>
+  dplyr::slice_head(n = 20)|>
+  dplyr::mutate(donor = stringr::str_wrap(donor,
+                                           width = 45))
+
+ggplot2::ggplot(segments, ggplot2::aes(x = Strategic_Priority,
+                     y = Resource_Allocation_Score, 
+                     color = segment,
+                     size = total)) +
+  ggplot2::geom_point(alpha = 0.7) +
+  ggrepel::geom_text_repel(
+    data = label_data_top_donors,
+    ggplot2::aes(label = donor),  
+    size = 3.5,
+    segment.color = 'grey50',
+    min.segment.length = 0,
+    box.padding = 0.5,
+    max.overlaps = Inf  ) +
+  ggplot2::scale_size_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::scale_y_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale()),
+    n.breaks = 5) +
+  ggplot2::scale_x_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::labs(title = paste0("Donor Segmentation for ",  recipient_name),
+       subtitle = "Combined value of the relationship based on 
+       **Donor Engagement**, **Alignment Index**, and **Growth Potential** in 
+       relation with funding history",
+       x = "Strategic Priority",
+       y = "Resource Allocation Score",
+       color = "Segment",
+       caption = paste0(
+    "Indicator interpretation:",
+    "For **Strategic Priority (X-axis):** Higher means a more valuable or 
+    promising relationship.",
+    "The **Resource Allocation Score (Y-axis):** is an indicator of whether the
+    donor is 'under-resourced'. It is calculated as Strategic Priority divided
+    by the total historical funding (total). Higher scores suggest the donor has
+    high priority but currently receives relatively low engagement effort.",
+    "The size of the bubble reflects the **Total Funding Amount** to all 
+    destinations, showing the donor's overall financial capacity.",
+    "\n\n",
+    "Each bubble represents a donor, classified into a segment based on its 
+    position on the matrix.",
+    "This **Donor Segmentation Matrix** classifies donors into five categories
+    based on two calculated scores:",
+    "1. **Strategic Stars (Top-Right, High Y):** High Strategic Priority, but 
+    currently under-resourced by our organization (high potential for increased
+    funding/engagement).",
+    "2. **Core Partners (Right, Lower Y):** High Strategic Priority and already
+    well-resourced (maintain stable, high-value relationship).",
+    "3. **Emerging Opportunities (Middle):** Medium Strategic Priority and good
+    growth potential (focus on growth).",
+    "4. **Divestment Candidates (Bottom-Left):** Low Strategic Priority 
+    (low returns on effort).",
+    "5. **Maintenance Accounts (Bottom-Right, High Total):** Lower Strategic 
+    Priority, but historically large and stable contributors (focus on stable
+    retention and minimizing effort).",
+    "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+  unhcrthemes::theme_unhcr(grid = TRUE, axis =  FALSE, axis_title = TRUE, legend=TRUE)  
 ```
   
 ```{r tests-analysis_donor_segmentation}
@@ -759,8 +1384,6 @@ test_that("analysis_donor_segmentation works", {
 
   
 ```{r function-analysis_funding_forecast}
-#' Funding Forecast (ARIMA)
-#'
 #' Aggregate historical amounts by month and forecast future funding for a donor or recipient.
 #'
 #' @param flows Dataframe `flows`.
@@ -770,51 +1393,83 @@ test_that("analysis_donor_segmentation works", {
 #'
 #' @return A list with components: ts (monthly ts), model (fitted ARIMA), forecast (forecast object)
 #' @importFrom tidyr unnest
-#' @importFrom dplyr filter mutate group_by summarise arrange
-#' @importFrom lubridate ymd floor_date
+#' @importFrom dplyr filter mutate group_by summarise arrange if_else
+#' @importFrom lubridate ymd floor_date ymd_hms
 #' @importFrom forecast auto.arima forecast
 #' @export
 analysis_funding_forecast <- function(flows, by = c("donor", "recipient"), name, h = 12) {
   by <- match.arg(by)
   
+  # --- 1. Prepare Base Data: Unnest and Rename ---
   df <- flows |>
     tidyr::unnest(sourceObjects, names_sep = "_") |>
-    dplyr::rename(donor = sourceObjects_name, donor_type = sourceObjects_type)
-  
-  df <- df |>
+    dplyr::rename(donor = sourceObjects_name, donor_type = sourceObjects_type) |>
     tidyr::unnest(destinationObjects, names_sep = "_") |>
     dplyr::rename(recipient = destinationObjects_name, dest_type = destinationObjects_type) |>
     dplyr::mutate(amountUSD = as.numeric(amountUSD))
   
+  # --- 2. Filter and Aggregate by Entity ---
   if (by == "donor") {
     sel <- df |>
       dplyr::filter(donor == name)
     if (nrow(sel) == 0) stop("No flows found for donor ", name)
+    
     sel <- sel |>
-      dplyr::mutate(dt = suppressWarnings(lubridate::ymd_hms(date)),
-                    dt = ifelse(is.na(dt), suppressWarnings(lubridate::ymd(date)), dt),
-                    month = as.Date(lubridate::floor_date(dt, unit = "month"))) |>
+      dplyr::mutate(
+        # Attempt to parse date/time fields first
+        dt_hms = suppressWarnings(lubridate::ymd_hms(date)),
+        dt_ymd = suppressWarnings(lubridate::ymd(date)),
+        # FIX: Use dplyr::if_else to prevent date/time coercion to numeric
+        dt = dplyr::if_else(
+          !is.na(dt_hms), 
+          dt_hms, 
+          as.POSIXct(dt_ymd) # Ensure final column is consistent POSIXct
+        ),
+        month = as.Date(lubridate::floor_date(dt, unit = "month"))
+      ) |>
       dplyr::group_by(month) |>
       dplyr::summarise(amount = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
       dplyr::arrange(month)
-  } else {
+      
+  } else { # by == "recipient"
     sel <- df |>
       dplyr::filter(recipient == name)
     if (nrow(sel) == 0) stop("No flows found for recipient ", name)
+    
     sel <- sel |>
-      dplyr::mutate(dt = suppressWarnings(lubridate::ymd_hms(date)),
-                    dt = ifelse(is.na(dt), suppressWarnings(lubridate::ymd(date)), dt),
-                    month = as.Date(lubridate::floor_date(dt, unit = "month"))) |>
+      dplyr::mutate(
+        # Attempt to parse date/time fields first
+        dt_hms = suppressWarnings(lubridate::ymd_hms(date)),
+        dt_ymd = suppressWarnings(lubridate::ymd(date)),
+        # FIX: Use dplyr::if_else to prevent date/time coercion to numeric
+        dt = dplyr::if_else(
+          !is.na(dt_hms), 
+          dt_hms, 
+          as.POSIXct(dt_ymd) # Ensure final column is consistent POSIXct
+        ),
+        month = as.Date(lubridate::floor_date(dt, unit = "month"))
+      ) |>
       dplyr::group_by(month) |>
       dplyr::summarise(amount = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
       dplyr::arrange(month)
   }
   
+  # --- 3. Forecast ---
+  
   # ensure continuous monthly series
   if (nrow(sel) < 2) stop("Not enough monthly observations to build a forecast.")
-  ts_start <- c(as.integer(format(min(sel$month), "%Y")), as.integer(format(min(sel$month), "%m")))
+  
+  # Find start year and month for the ts object
+  ts_start <- c(as.integer(format(min(sel$month), "%Y")), 
+                as.integer(format(min(sel$month), "%m")))
+                
   ts_vec <- stats::ts(sel$amount, start = ts_start, frequency = 12)
   
+  # Handle potential issues with too few data points for auto.arima
+  if (length(ts_vec) < 24) {
+      warning("Time series is short. auto.arima might struggle to identify seasonal patterns.")
+  }
+
   fit <- forecast::auto.arima(ts_vec)
   fcast <- forecast::forecast(fit, h = h)
   
@@ -822,8 +1477,41 @@ analysis_funding_forecast <- function(flows, by = c("donor", "recipient"), name,
 }
 ```
   
-```{r example-analysis_funding_forecast}
-analysis_funding_forecast()
+```{r example-analysis_funding_forecast, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+donor <- "Germany"
+forecast_result <- analysis_funding_forecast(flows,
+                                             by = "donor", 
+                                             name = donor)
+
+ggplot2::autoplot(forecast_result$forecast) +
+
+  ggplot2::scale_y_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::labs(title = paste0("Funding Forecast of monthly funding amounts from ",
+  donor),
+       subtitle= "Using an Autoregressive Integrated Moving Average time
+       series model (ARIMA).",
+       x = "Year",
+       y = "Funding Amount (USD)",
+       caption = paste0(
+    "Indicator interpretation:",
+    "The **dark line** represents the historical monthly funding data used for
+    training the model. The **lighter line** extending to the right shows
+    the **future forecast**.",
+    "\n\n",
+    
+    "The **shaded areas** surrounding the forecast line represent 
+    the **prediction intervals**: the **darker shade** is the 80% confidence 
+    interval, and the **lighter shade** is the 95% confidence interval. 
+    These areas indicate the likely range of future funding, showing the
+    uncertainty inherent in the forecast: the wider the shade, 
+    the less certain the prediction.",
+    "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+  unhcrthemes::theme_unhcr(grid = TRUE, 
+                           axis =  FALSE, 
+                           axis_title = FALSE,
+                           legend=TRUE)  
 ```
   
 ```{r tests-analysis_funding_forecast}
@@ -833,33 +1521,71 @@ test_that("analysis_funding_forecast works", {
 ```
   
 # analysis_donor_network_metrics
-    
 
-  
 ```{r function-analysis_donor_network_metrics}
-#' Donor–Recipient Network Metrics
+#' Donor-Destination Network Metrics 
 #'
-#' Build a bipartite donor → recipient network from flows and compute node centrality measures:
-#' - donor_degree, donor_betweenness, donor_eigenvector (via igraph)
+#' Builds a bipartite donor -> destination network from flows, filtered to include
+#' only flows directed to the specified `recipient_name`. Computes node centrality measures
+#' (degree, betweenness, eigenvector) for the involved donors and destinations.
 #'
 #' @param flows Dataframe `flows`.
-#' @param top_n Optional integer: restrict network to top_n donors by amount and top_n recipients by amount for readability.
+#' @param recipient_name Character: The name of the specific
+#'            recipient/destination to analyze.
+#' @param top_n Optional integer: restricts the network to top_n donors
+#'              and top_n destinations
+#'   by amount *within the filtered flows* for readability.
 #'
-#' @return A list with components: graph (igraph object), donor_metrics (tibble), recipient_metrics (tibble)
+#' @return A list with components: graph (igraph object), 
+#'    donor_metrics (tibble), destination_metrics (tibble)
 #' @importFrom tidyr unnest
-#' @importFrom dplyr group_by summarise arrange desc slice_head pull mutate
-#' @importFrom igraph graph_from_data_frame degree betweenness eigen_centrality
+#' @importFrom dplyr group_by summarise arrange desc slice_head pull mutate filter rename
+#' @importFrom igraph graph_from_data_frame degree betweenness eigen_centrality V
 #' @export
-analysis__donor_network_metrics <- function(flows, top_n = 50) {
+analysis_donor_network_metrics <- function(flows, 
+                                           recipient_name = NULL, 
+                                           top_n = 20) {
+  
+  flows <- filter_flows_for_indicators(flows)
+  # --- 1. Prepare Base Data (Donor -> Destination) ---
   df <- flows |>
-    tidyr::unnest(sourceObjects, names_sep = "_") |>
+    dplyr::mutate(destinationObjects2 = destinationObjects) |>
+    tidyr::unnest(destinationObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects_type == "Location") |>
+    dplyr::rename(destination = destinationObjects_name) |>
+    tidyr::unnest(sourceObjects,
+                  names_repair = "unique",
+                  names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization") |>
     dplyr::rename(donor = sourceObjects_name) |>
-    tidyr::unnest(destinationObjects, names_sep = "_") |>
-    dplyr::rename(recipient = destinationObjects_name, dest_type = destinationObjects_type) |>
-    dplyr::filter(dest_type %in% c("Organization", "Location", "Plan")) |>
-    dplyr::mutate(amountUSD = as.numeric(amountUSD))
+    tidyr::unnest(destinationObjects2,
+                  names_repair = "unique",
+                  names_sep = "_") |>
+    dplyr::filter(destinationObjects2_type == "Organization")|>
+    dplyr::mutate(amountUSD = as.numeric(amountUSD))|>
+    dplyr::rename(recipient = destinationObjects2_name) 
   
+  # --- 2. Filter by Recipient Name (NEW STEP) ---
+  # If recipient_name is provided, filter the flows.
+  # Note: The original 'recipient' column name is now 'destination'.
+  if (!is.null(recipient_name)) {
+    df <- df |>
+      dplyr::filter(recipient == recipient_name)
+    
+    if (nrow(df) == 0) {
+      warning("No flows found for the specified recipient/destination: ", recipient_name)
+      return(list(graph = NULL, donor_metrics = NULL, destination_metrics = NULL))
+    }
+    
+    # If filtered to one destination, we don't need 'top_n' for destinations, 
+    # but we still calculate donor metrics based on the filtered edges.
+  }
+  
+  # --- 3. Restrict by Top N (Donor and Destination) ---
+  
+  # Top Donors based on total amount *in the filtered data*
   donors_top <- df |>
     dplyr::group_by(donor) |>
     dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
@@ -867,26 +1593,33 @@ analysis__donor_network_metrics <- function(flows, top_n = 50) {
     dplyr::slice_head(n = top_n) |>
     dplyr::pull(donor)
   
-  recipients_top <- df |>
-    dplyr::group_by(recipient) |>
+  # Top Destinations (Recipient) based on total amount *in the filtered data*
+  # If recipient_name was provided, this list will likely just contain that name, 
+  # or the top N if no name was specified.
+  destinations_top <- df |>
+    dplyr::group_by(destination) |>
     dplyr::summarise(total = sum(amountUSD, na.rm = TRUE), .groups = "drop") |>
     dplyr::arrange(dplyr::desc(total)) |>
     dplyr::slice_head(n = top_n) |>
-    dplyr::pull(recipient)
+    dplyr::pull(destination)
   
+  # --- 4. Build Edges and Graph ---
   edges <- df |>
-    dplyr::filter(donor %in% donors_top, recipient %in% recipients_top) |>
-    dplyr::group_by(donor, recipient) |>
+    dplyr::filter(donor %in% donors_top, destination %in% destinations_top) |>
+    dplyr::group_by(donor, destination) |>
     dplyr::summarise(weight = sum(amountUSD, na.rm = TRUE), .groups = "drop")
   
-  # build bipartite graph
   g <- igraph::graph_from_data_frame(edges, directed = FALSE)
   
-  # donor metrics
+  # --- 5. Compute Donor Metrics ---
+  # Note: Must ensure nodes exist in the graph before calculating metrics
   donors_nodes <- intersect(igraph::V(g)$name, donors_top)
+  
   donor_deg <- igraph::degree(g, v = donors_nodes)
   donor_betw <- igraph::betweenness(g, v = donors_nodes)
-  donor_eig <- igraph::eigen_centrality(g, directed = FALSE)$vector[match(donors_nodes, igraph::V(g)$name)]
+  # eigen_centrality requires a complex match because igraph returns a named vector
+  donor_eig_vector <- igraph::eigen_centrality(g, directed = FALSE)$vector
+  donor_eig <- donor_eig_vector[match(donors_nodes, names(donor_eig_vector))]
   
   donor_metrics <- tibble::tibble(
     donor = donors_nodes,
@@ -895,25 +1628,105 @@ analysis__donor_network_metrics <- function(flows, top_n = 50) {
     eigen_centrality = donor_eig
   )
   
-  # recipient metrics
-  recipients_nodes <- intersect(igraph::V(g)$name, recipients_top)
-  rec_deg <- igraph::degree(g, v = recipients_nodes)
-  rec_betw <- igraph::betweenness(g, v = recipients_nodes)
-  rec_eig <- igraph::eigen_centrality(g, directed = FALSE)$vector[match(recipients_nodes, igraph::V(g)$name)]
+  # --- 6. Compute Destination Metrics ---
+  destinations_nodes <- intersect(igraph::V(g)$name, destinations_top)
   
-  recipient_metrics <- tibble::tibble(
-    recipient = recipients_nodes,
-    degree = rec_deg,
-    betweenness = rec_betw,
-    eigen_centrality = rec_eig
+  dest_deg <- igraph::degree(g, v = destinations_nodes)
+  dest_betw <- igraph::betweenness(g, v = destinations_nodes)
+  dest_eig_vector <- igraph::eigen_centrality(g, directed = FALSE)$vector
+  dest_eig <- dest_eig_vector[match(destinations_nodes, names(dest_eig_vector))]
+  
+  destination_metrics <- tibble::tibble(
+    destination = destinations_nodes,
+    degree = dest_deg,
+    betweenness = dest_betw,
+    eigen_centrality = dest_eig
   )
   
-  return(list(graph = g, donor_metrics = donor_metrics, recipient_metrics = recipient_metrics))
+  # --- 7. Return Results ---
+  return(list(graph = g, donor_metrics = donor_metrics, 
+              destination_metrics = destination_metrics))
 }
 ```
   
-```{r example-analysis_donor_network_metrics}
-analysis_donor_network_metrics()
+```{r example-analysis_donor_network_metrics, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+
+recipient_name <-  "United Nations High Commissioner for Refugees"
+network_metrics <- analysis_donor_network_metrics(flows, recipient_name)
+
+g <- network_metrics$graph
+
+# Create a data frame for nodes, including the calculated degree
+nodes_df_all <- tibble::tibble(name = igraph::V(g)$name) |>
+  dplyr::mutate(
+    # Get the type property added in the original setup
+    type = ifelse(name %in% network_metrics$donor_metrics$donor, 
+                  "Donor", "Destination"),
+    # Calculate degree for sizing and labeling
+    degree = igraph::degree(g, v = name)
+  )
+
+# --- Prepare Node Data AND Compute Coordinates 
+# Create the layout object first to get the coordinates (x, y)
+layout_data <- ggraph::create_layout(g,
+ layout = "fr") # Fruchterman-Reingold	General networks
+# layout = "circle")
+# layout = "kk")	#Kamada-Kawai	Small to medium networks 
+# layout = "dr") #	Davidson-Harel	Finding a minimum-energy state; 
+
+# Filter the layout data to only include the nodes of interest, 
+# ensuring all necessary columns (x, y, name, type, degree) are present.
+nodes_df_all_coords <- layout_data |>
+  dplyr::as_tibble() |>
+  dplyr::left_join(
+    nodes_df_all |> dplyr::select(name, type, degree), 
+    by = "name"
+  ) |>
+  dplyr::filter(!is.na(type)) # Filter out any non-donor/non-destination nodes 
+
+# --- Ggraph Plot ---
+ggraph::ggraph(layout_data) + # Use the layout_data object here
+
+  # EDGES: Use geom_edge_fan (works seamlessly with layout_data)
+  ggraph::geom_edge_fan(ggplot2::aes(alpha = weight), 
+                        alpha = 0.3, 
+                        width = 0.5, 
+                        show.legend = FALSE) +
+
+  ggraph::geom_node_point(
+    ggplot2::aes(color = nodes_df_all_coords$type[match(name, 
+                                                    nodes_df_all_coords$name)],
+                              size = nodes_df_all_coords$degree[match(name,
+                                                    nodes_df_all_coords$name)]),
+                          alpha = 0.6) +
+
+  # --- label ---
+  ggrepel::geom_label_repel(
+    data = nodes_df_all_coords, 
+    ggplot2::aes(x = x, y = y, label = name, color = type), 
+    inherit.aes = FALSE,
+    size = 2.5,
+    force = 2,
+    max.overlaps = Inf,
+    box.padding = 0.4,
+    segment.color = 'grey80',
+    show.legend = FALSE) +
+  ggplot2::scale_size_continuous(range = c(2, 15), name = "Degree") +
+  ggplot2::scale_color_manual(values = c("Donor" = "#007BFF",
+                                         "Destination" = "#FFC300"), 
+                              name = "Node Type") +
+
+  ggplot2::labs(
+    title = paste0("Funding Network for ", recipient_name),
+    subtitle = "Node size reflects Degree (number of destination).",
+    caption = "Data Source: OCHA Financial Tracking Service (FTS) API. 
+    Layout: Fruchterman-Reingold."
+  ) +
+  ggraph::theme_graph(
+    background = "white",
+    base_family = "sans"
+  )
+
 ```
   
 ```{r tests-analysis_donor_network_metrics}
@@ -940,7 +1753,8 @@ These are only included in the present flat template file, their content will no
 
 #remotes::install_github("thinkr-open/checkhelper")
 # checkhelper::print_globals()
-fusen::inflate(flat_file = "dev/flat_dev_4_analysis", vignette_name = "4-Analysis")
+ # tools::showNonASCIIfile("dev/flat_dev_4_analysis.Rmd")
+fusen::inflate(flat_file = "dev/flat_dev_4_analysis.Rmd", vignette_name = "4-Analysis")
 ```
 
 

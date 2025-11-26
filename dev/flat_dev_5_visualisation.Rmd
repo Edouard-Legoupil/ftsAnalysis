@@ -14,6 +14,93 @@ library(testthat)
 pkgload::load_all(export_all = FALSE)
 ```
 
+# clean_llm_response
+
+  
+```{r function-clean_llm_response}
+#' Clean LLM Response
+#'
+#' Remove thinking tags, markdown, and other artifacts from LLM responses
+#' Useful for Local Open Source Reasoning Small Language Model
+#'
+#' @param response Character string from LLM response
+#' @param keep_punctuation boolean
+#' @return Cleaned character string
+#' @export
+clean_llm_response <- function(response, keep_punctuation = TRUE) {
+  if (!is.character(response)) return(response)
+  
+  # Split into lines
+  lines <- strsplit(response, "\n")[[1]]
+  
+  # Find thinking tag boundaries
+  think_start <- which(grepl("<think>", lines, ignore.case = TRUE))
+  think_end <- which(grepl("</think>", lines, ignore.case = TRUE))
+  
+  # Remove ALL lines between thinking tags (inclusive)
+  if (length(think_start) > 0 && length(think_end) > 0) {
+    remove_indices <- integer(0)
+    for (i in seq_along(think_start)) {
+      if (think_start[i] <= think_end[i]) {
+        remove_indices <- c(remove_indices, think_start[i]:think_end[i])
+      }
+    }
+    if (length(remove_indices) > 0) {
+      lines <- lines[-remove_indices]
+    }
+  }
+  
+  # Combine back
+  response <- paste(lines, collapse = " ")
+  
+  # Remove all non-ASCII characters
+  response <- gsub("[^\x20-\x7E]", "", response)
+  
+  # Remove common LLM artifacts and introductory phrases
+  response <- gsub("^(Sure|Certainly|Okay|Here|First).*?(:|\\.)\\s*", "", response, ignore.case = TRUE)
+  response <- gsub("^(As an AI|I am an AI|I'm a).*?\\.\\s*", "", response, ignore.case = TRUE)
+  response <- gsub("^(My role includes|This includes).*?\\.\\s*", "", response, ignore.case = TRUE)
+  response <- gsub("^(Aligning with constraints).*?\\.\\s*", "", response, ignore.case = TRUE)
+  
+  # Remove markdown formatting
+  response <- gsub("\\*\\*|\\*|__|_", "", response)
+  response <- gsub("\\[.*?\\]\\(.*?\\)", "", response)
+  response <- gsub("#+\\s*", "", response)
+  response <- gsub("`{1,3}", "", response)
+  
+  # Remove excessive whitespace
+  response <- gsub("\\s+", " ", response)
+  response <- trimws(response)
+  
+  # If empty after cleaning, provide fallback
+  if (nchar(response) == 0) {
+    return("Unable to generate story from this visualization.")
+  }
+  
+  return(response)
+}
+```
+  
+```{r example-clean_llm_response}
+response <- "<think>
+First, I'm a humanitarian data visualization expert. My role includes extracting insights 
+from visualizations, creating accessible narratives, highlighting patterns relevant to aid
+efforts, using clear language with emotional resonance.
+Aligning with constraints: Use plain language, be concise and impactful. Don't rehash 
+every detail; build narrative depth around 2 key insights maximum in under 30 tokens.
+</think>
+This visualization tracks a relationship potentially critical for humanitarian logistics: 
+higher fuel consumption versus increased weight. 车辆设计"
+clean_llm_response(response)
+```
+  
+```{r tests-clean_llm_response}
+test_that("clean_llm_response works", {
+  expect_true(inherits(clean_llm_response, "function")) 
+})
+```
+  
+
 # generate_plot_story
 
 ```{r function-generate_plot_story}
@@ -21,42 +108,48 @@ pkgload::load_all(export_all = FALSE)
 #'
 #' This function takes a ggplot2 object and generates a storytelling narrative
 #' focused on humanitarian insights. It uses the \{ellmer\} package to call
-#' a large language model from a supported provider.
-#'
-#' The narrative can be used as a full‑text explanation or a concise subtitle
-#' for plots. The LLM has access to the plot’s data (truncated for efficiency),
-#' title, subtitle, and caption. Both provider and model can be chosen explicitly
-#' or detected automatically based on which API key environment variable is set.
+#' a large or small language model from a supported provider.
+#' 
+#' If you do not have API keys or need to work offline, simply get ollama and 
+#' look at top reasoning models - https://ollama.com/search?c=thinking 
 #'
 #' Setup:
 #' 1. Install \{ellmer\}: `install.packages("ellmer")`
-#' 2. Use Ollama or Set your API key in your environment, for example:
-#'    `Sys.setenv(OPENAI_API_KEY = "<YOUR_OPENAI_KEY>")`
-#'    `Sys.setenv(GEMINI_API_KEY = "<YOUR_GOOGLE_GEMINI_KEY>")`
-#'    `Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")`
+#' 2. Set your API key in your environment. For Azure OpenAI, use the standard
+#'    OpenAI key variable:
+#'    `Sys.setenv(OPENAI_API_KEY = "<YOUR_AZURE_OPENAI_KEY>")`
+#' 3. When using Azure, set `provider = "azure"` and provide the env variables
+#'   `Sys.setenv(AZURE_OPENAI_ENDPOINT = "<YOUR_AZURE_ENDPOINT>")`
+#'   `Sys.setenv(AZURE_OPENAI_API_VERSION = "<YOUR_AZURE_OPENAI_API_VERSION>")`
+#'   The best place to set this is in .Renviron, which you can easily edit by
+#'    calling `usethis::edit_r_environ()`
 #'
 #' @param plot A `ggplot` object from ggplot2.
 #' @param max_tokens Maximum number of tokens (approximate) 
 #' for the narrative (default = 30).
 #' @param provider Optional character string specifying the provider. Options 
 #' include:
-#'   `"openai"`, `"gemini"`, `"anthropic"`, `"ollama"`. If `NULL`, 
+#'   `"openai"`, `"gemini"`, `"anthropic"`, `"ollama"`, `"azure"`. If `NULL`, 
 #'   auto-detect from environment keys.
-#' @param model Optional character string specifying the model name. If `NULL`,
-#'  a default model for the chosen provider will be used.
+#' @param model Optional character string specifying the model name. For Azure,
+#'    this is typically the deployment name. If `NULL`, a default model for the
+#'    chosen provider will be used.
+#' @param clean_response Logical. Whether to clean the response by removing
+#'   thinking tags and other artifacts (default = TRUE).
 #'
 #' @return A character string containing a storytelling narrative focused on
 #'  humanitarian data.
 #'
 #' @importFrom ggplot2 ggplot_build
-#' @importFrom dplyr mutate mutate_if select
-#' @importFrom stringr str_c str_to_lower
-#' @importFrom ellmer chat_openai chat_google_gemini chat_anthropic chat_ollama
+#' @importFrom dplyr mutate_if
+#' @importFrom utils capture.output head
+#' @importFrom ellmer chat_openai chat_google_gemini chat_anthropic chat_ollama chat_azure_openai
 #' @export
 generate_plot_story <- function(plot, 
                                 max_tokens = 30,
                                 provider = NULL,
-                                model = NULL) {
+                                model = NULL,
+                                clean_response = TRUE) {
   
   # Extract plot data (first layer) and truncate
   plot_data <- ggplot2::ggplot_build(plot)$data[[1]] |>
@@ -70,36 +163,99 @@ generate_plot_story <- function(plot,
   subtitle <- if (!is.null(labels$subtitle)) labels$subtitle else ""
   caption  <- if (!is.null(labels$caption))  labels$caption  else ""
   
+  # Extract mapping aesthetics
+  mapping_info <- if (!is.null(plot$mapping)) {
+    mapping_text <- capture.output(print(plot$mapping))
+    paste("Global mapping:", paste(mapping_text, collapse = " "))
+  } else {
+    "No global mapping defined"
+  }
+
+  # Extract layer-specific mappings
+  layer_mappings <- sapply(plot$layers, function(layer) {
+    if (!is.null(layer$mapping)) {
+      paste("Layer mapping:", capture.output(print(layer$mapping)))
+    } else {
+      "No layer-specific mapping"
+    }
+  })
+  layer_mappings_text <- paste(unique(layer_mappings), collapse = "; ")
+  
+  # Detect scales and transformations
+  scale_info <- if (!is.null(plot$scales$scales) && length(plot$scales$scales) > 0) {
+    scale_types <- sapply(plot$scales$scales, function(scale) {
+      paste(class(scale)[1], "scale (", scale$aesthetics[1], ")")
+    })
+    paste("Scale transformations:", paste(unique(scale_types), collapse = ", "))
+  } else {
+    "No custom scale transformations detected"
+  }
+  
   # Detect geoms used
   geoms <- unique(sapply(plot$layers, function(layer) class(layer$geom)[1]))
   geoms_text <- paste(geoms, collapse = ", ")
   
-  # Build prompt
   system_prompt <- paste0(
-    "You are a humanitarian data storytelling assistant. ",
-    "Create a clear, compelling narrative highlighting humanitarian insights
-    from this visualization."
+    "You are a humanitarian data analysis expert. Your role is to:\n",
+    "1. Extract key humanitarian insights from a dataset and its visualization parameters\n",
+    "2. Create compelling, accessible narratives tailored for an executive audiences\n",
+    "3. Highlight patterns, trends, and implications for humanitarian response\n",
+    "4. Adapt interpretation depth based on available data and context\n",
+    "5. Use clear, plain language with appropriate emotional resonance\n\n",
+    
+    "CRITICAL INSTRUCTIONS:\n",
+    "- DO NOT include any thinking tags like <think> or </think> in your response\n",
+    "- DO NOT use markdown formatting, asterisks, or special characters\n",
+    "- Provide ONLY the final narrative text\n",
+    "- Your response should be clean plain text ready for display\n\n",
+    
+    "Response Guidelines:\n",
+    "- Focus on the most significant patterns and their humanitarian relevance\n",
+    "- Suggest potential implications or actions\n",
+    "- Adjust the tone for an executive audience\n",
+    "- Craft a clear narrative arc with a beginning (context/problem), middle (analysis/discovery), and end (insights/implications/call for actions)\n"
   )
   
+  # Build enhanced prompt
   prompt <- paste0(
-    "Title: ",    title,    "\n",
-    "Subtitle: ", subtitle, "\n",
-    "Caption: ",  caption,  "\n\n",
-    "Data (first 30 rows):\n", paste(plot_data_text, collapse = "\n"),
-    "Consider the type of plot geoms used: ", geoms_text, ".",
-    "\n\nWrite a story in plain English, up to about ", max_tokens, " tokens."
+    "VISUALIZATION CONTEXT:\n",
+    "Title: ", title, "\n",
+    "Subtitle: ", subtitle, "\n", 
+    "Caption: ", caption, "\n",
+    "Chart type(s): ", geoms_text, "\n",
+    "Data mappings: ", mapping_info, "\n",
+    "Layer mappings: ", layer_mappings_text, "\n", 
+    "Scales: ", scale_info, "\n\n",
+    
+    "DATA:\n", paste(plot_data_text, collapse = "\n"), "\n\n",
+    
+    "TASK: Create a humanitarian data story using the provided data and visualization parameters.\n",
+    "Consider what each mapped variable represents and any data transformations applied.\n\n",
+    
+    "ADAPTIVE CONSTRAINTS:\n",
+    "- Important! Maximum length for the generated output: ", max_tokens, " tokens\n",
+    "- Prioritize clarity over completeness\n",
+    "- Focus on 2-3 key insights if space is limited\n",
+    "- Use concise but impactful language\n",
+    "- IMPORTANT: Provide only clean text output without any thinking tags or markdown\n\n",
+    
+    "What humanitarian story does this data tell, considering the variable mappings and any data transformations?"
   )
   
   # Auto-detect provider if not specified
   if (is.null(provider)) {
-    if (!is.na(Sys.getenv("OPENAI_API_KEY", unset = NA_character_))) {
+    # Check for Azure-specific environment variables
+    if (!is.na(Sys.getenv("AZURE_OPENAI_ENDPOINT", unset = NA_character_)) &&
+        !is.na(Sys.getenv("AZURE_OPENAI_API_KEY", unset = NA_character_))) {
+      provider <- "azure"
+    } else if (!is.na(Sys.getenv("OPENAI_API_KEY", unset = NA_character_))) {
       provider <- "openai"
     } else if (!is.na(Sys.getenv("GEMINI_API_KEY", unset = NA_character_))) {
       provider <- "gemini"
     } else if (!is.na(Sys.getenv("ANTHROPIC_API_KEY", unset = NA_character_))) {
       provider <- "anthropic"
     } else {
-      stop("No supported API key found. Set OPENAI_API_KEY, GEMINI_API_KEY,
+      stop("No supported API key found. Set AZURE_OPENAI_ENDPOINT/KEY, OPENAI_API_KEY, GEMINI_API_KEY,
            ANTHROPIC_API_KEY, or install and set it to a local OLLAMA")
     }
   }
@@ -112,10 +268,11 @@ generate_plot_story <- function(plot,
       provider,
       openai = "gpt-4o-mini",
       gemini = "gemini-2.5-flash",
-      anthropic = "claude-sonnet-4",
-      ollama = "phi3:latest",
+      anthropic = "claude-3-5-sonnet-20241022",
+      ollama = "deepseek-r1",
+      azure = "gpt-4", # Placeholder: Must be a valid deployment name
       stop("Invalid provider specified. Choose from 
-           'openai', 'gemini', 'anthropic', 'ollama'.")
+           'openai', 'gemini', 'anthropic', 'ollama', 'azure'.")
     )
   }
   
@@ -123,19 +280,56 @@ generate_plot_story <- function(plot,
   chat <- switch(
     provider,
     openai = ellmer::chat_openai(model = model, system_prompt = system_prompt),
-    gemini = ellmer::chat_google_gemini(system_prompt = system_prompt,
-                base_url = "https://generativelanguage.googleapis.com/v1beta/",
-                                        api_key = Sys.getenv("GEMINI_API_KEY")),
-    anthropic = ellmer::chat_anthropic(model = model,
-                                       system_prompt = system_prompt),
-    ollama = ellmer::chat_ollama(model = model, 
-                                 system_prompt = system_prompt),
-    stop("Invalid provider specified. Choose from
-         'openai', 'gemini', 'anthropic', 'ollama'.")
+    
+    # Azure OpenAI using the dedicated function and explicit environment variable checks
+    azure = {
+      # Fetch required environment variables
+      azure_key <- Sys.getenv("AZURE_OPENAI_API_KEY")
+      azure_endpoint <- Sys.getenv("AZURE_OPENAI_ENDPOINT")
+      azure_version <- Sys.getenv("AZURE_OPENAI_API_VERSION")
+      
+      # VALIDATION: Check if any required variable is unset (returns "")
+      if (azure_key == "" || azure_endpoint == "" || azure_version == "") {
+        stop("For 'azure' provider, AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_VERSION environment variables must all be set correctly in the R session.")
+      }
+      
+      # Initialize chat object, passing the validated environment variables
+      ellmer::chat_azure_openai(
+        system_prompt = system_prompt,
+        model = model,
+        api_version = azure_version,
+        endpoint = azure_endpoint,
+        api_key = azure_key
+      )
+    },
+    
+    gemini = ellmer::chat_google_gemini(
+      model = model,
+      system_prompt = system_prompt,
+      base_url = "https://generativelanguage.googleapis.com/v1beta/",
+      api_key = Sys.getenv("GEMINI_API_KEY")),
+    
+    anthropic = ellmer::chat_anthropic(
+      model = model, 
+      system_prompt = system_prompt),
+    
+    ollama = ellmer::chat_ollama(
+      model = model,
+      system_prompt = system_prompt),
+    
+    stop(
+      "Invalid provider specified. Choose from
+         'openai', 'gemini', 'anthropic', 'ollama', 'azure'."
+    )
   )
   
   # Send prompt and get response
   response <- chat$chat(prompt)
+  
+  # Clean response if requested
+  if (clean_response) {
+    response <- clean_llm_response(response)
+  }
   
   return(response)
 }
@@ -152,8 +346,9 @@ p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
         subtitle = "Fuel consumption vs weight",
         caption = "Source: mtcars dataset")
 
-story <- generate_plot_story(p)
-cat(story)
+generate_plot_story(p, provider = "ollama", model = "deepseek-r1")
+
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # To use as subtitle:
 p + ggplot2::labs(subtitle = story)
 ```
@@ -182,7 +377,7 @@ test_that("generate_plot_story works", {
 #' @import unhcrthemes
 #' @export
 plot_donor_funding_over_time <- function(flows, donor_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization",
@@ -207,17 +402,19 @@ plot_donor_funding_over_time <- function(flows, donor_name) {
 
 ```
   
-```{r example-plot_donor_funding_over_time}
+```{r example-plot_donor_funding_over_time, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_funding_over_time(flows, donor_name= "Spain, Government of")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+#cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 print(p + ggplot2::labs(subtitle = dubbed))
 
 ```
+
+`r story`
   
 ```{r tests-plot_donor_funding_over_time}
 test_that("plot_donor_funding_over_time works", {
@@ -244,7 +441,7 @@ test_that("plot_donor_funding_over_time works", {
 #' @import unhcrthemes
 #' @export
 plot_donor_earmarking <- function(flows, donor_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization", 
@@ -268,16 +465,18 @@ plot_donor_earmarking <- function(flows, donor_name) {
 }
 ```
   
-```{r example-plot_donor_earmarking}
+```{r example-plot_donor_earmarking, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_earmarking(flows, donor_name= "Spain, Government of")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+  
+`r story`  
   
 ```{r tests-plot_donor_earmarking}
 test_that("plot_donor_earmarking works", {
@@ -305,7 +504,7 @@ test_that("plot_donor_earmarking works", {
 #' @import unhcrthemes
 #' @export
 plot_donor_flowtype <- function(flows, donor_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization",
@@ -327,17 +526,19 @@ plot_donor_flowtype <- function(flows, donor_name) {
 }
 ```
   
-```{r example-plot_donor_flowtype}
+```{r example-plot_donor_flowtype, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_flowtype(flows, donor_name= "Spain, Government of")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
-  
+
+`r story`
+
 ```{r tests-plot_donor_flowtype}
 test_that("plot_donor_flowtype works", {
   expect_true(inherits(plot_donor_flowtype, "function")) 
@@ -361,10 +562,11 @@ test_that("plot_donor_flowtype works", {
 #' @importFrom ggplot2 ggplot aes geom_col labs  scale_y_continuous
 #' @importFrom dplyr  filter group_by summarise
 #' @importFrom tidyr unnest
+#' @importFrom stats reorder
 #' @import unhcrthemes
 #' @export
 plot_donor_cluster_coverage <- function(flows, donor_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(sourceObjects_type == "Organization", 
@@ -391,16 +593,18 @@ plot_donor_cluster_coverage <- function(flows, donor_name) {
 }
 ```
   
-```{r example-plot_donor_cluster_coverage}
+```{r example-plot_donor_cluster_coverage, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_cluster_coverage(flows, donor_name= "Spain, Government of")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_donor_cluster_coverage}
 test_that("plot_donor_cluster_coverage works", {
@@ -427,7 +631,7 @@ test_that("plot_donor_cluster_coverage works", {
 #' @import unhcrthemes
 #' @export
 plot_recipient_funding_composition <- function(flows, recipient_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(destinationObjects_type == "Organization", 
@@ -453,17 +657,19 @@ plot_recipient_funding_composition <- function(flows, recipient_name) {
 }
 ```
   
-```{r example-plot_recipient_funding_composition}
+```{r example-plot_recipient_funding_composition, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_funding_composition(flows, 
               recipient_name = "United Nations High Commissioner for Refugees")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_recipient_funding_composition}
 test_that("plot_recipient_funding_composition works", {
@@ -491,7 +697,7 @@ test_that("plot_recipient_funding_composition works", {
 #' @import unhcrthemes
 #' @export
 plot_recipient_grandbargain <- function(flows, recipient_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(destinationObjects_type == "Organization", 
@@ -522,17 +728,19 @@ plot_recipient_grandbargain <- function(flows, recipient_name) {
 }
 ```
   
-```{r example-plot_recipient_grandbargain}
+```{r example-plot_recipient_grandbargain, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_grandbargain(flows,
           recipient_name = "United Nations High Commissioner for Refugees")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_recipient_grandbargain}
 test_that("plot_recipient_grandbargain works", {
@@ -559,7 +767,7 @@ test_that("plot_recipient_grandbargain works", {
 #' @import unhcrthemes
 #' @export
 plot_recipient_cofunding <- function(flows, recipient_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
     dplyr::filter(destinationObjects_type == "Organization", 
@@ -587,18 +795,20 @@ plot_recipient_cofunding <- function(flows, recipient_name) {
 }
 ```
   
-```{r example-plot_recipient_cofunding}
+```{r example-plot_recipient_cofunding, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_cofunding(flows, 
               recipient_name = "United Nations High Commissioner for Refugees")
 
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_recipient_cofunding}
 test_that("plot_recipient_cofunding works", {
@@ -625,7 +835,7 @@ test_that("plot_recipient_cofunding works", {
 #' @import unhcrthemes
 #' @export
 plot_recipient_contribution_type <- function(flows, recipient_name) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects, 
                   names_repair = "unique",
@@ -651,18 +861,20 @@ plot_recipient_contribution_type <- function(flows, recipient_name) {
 }
 ```
   
-```{r example-plot_recipient_contribution_type}
+```{r example-plot_recipient_contribution_type, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_contribution_type(flows, 
                 recipient_name = "United Nations High Commissioner for Refugees")
 
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_recipient_contribution_type}
 test_that("plot_recipient_contribution_type works", {
@@ -670,30 +882,31 @@ test_that("plot_recipient_contribution_type works", {
 })
 ```
 
-# plot_location_funding_destination
+# plot_destination_funding_destination
 
-```{r function-plot_location_funding_destination}
+```{r function-plot_destination_funding_destination, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 #' Plot Funding by Destination Location
 #'
-#' Visualizes total humanitarian funding directed to a given destination location.
+#' Visualizes total humanitarian funding directed to a given destination destination.
 #' Useful to identify funding hotspots and compare regions.
 #'
 #' @param flows A dataframe of humanitarian funding flows (FTS format).
-#' @param location_name The name of the destination location to filter.
+#' @param destination_name The name of the destination location to filter.
 #'
-#' @return A ggplot object showing total funding per donor for the location.
+#' @return A ggplot object showing total funding per donor for the destination.
 #' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
 #' @importFrom dplyr  filter group_by summarise
 #' @importFrom tidyr unnest
 #' @import unhcrthemes
 #' @export
-plot_location_funding_destination <- function(flows, location_name) {
+plot_destination_funding_destination <- function(flows, destination_name) {
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects,
                   names_repair = "unique",
                   names_sep = "_") |>
     dplyr::filter(destinationObjects_type == "Location",
-                  destinationObjects_name == location_name) |>
+                  destinationObjects_name == destination_name) |>
     tidyr::unnest(sourceObjects,
                   names_repair = "unique",
                   names_sep = "_") |>
@@ -706,7 +919,7 @@ plot_location_funding_destination <- function(flows, location_name) {
     ggplot2::geom_col(fill = "darkorange") +
     ggplot2::coord_flip() +
     ggplot2::labs(
-      title = paste0("Funding Origin for ", location_name),
+      title = paste0("Funding Origin for ", destination_name),
       subtitle = "Funding contributed by each donor",
       x = "Donor",
       y = "Funding (USD)",
@@ -719,47 +932,50 @@ plot_location_funding_destination <- function(flows, location_name) {
 }
 ```
   
-```{r example-plot_location_funding_destination}
-p <- plot_location_funding_destination(flows, location_name= "Burundi")
+```{r example-plot_destination_funding_destination, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+p <- plot_destination_funding_destination(flows, destination_name= "Burundi")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
-```{r tests-plot_location_funding_destination}
-test_that("plot_location_funding_destination works", {
-  expect_true(inherits(plot_location_funding_destination, "function")) 
+```{r tests-plot_destination_funding_destination}
+test_that("plot_destination_funding_destination works", {
+  expect_true(inherits(plot_destination_funding_destination, "function")) 
 })
 ```
 
-# plot_location_funding_donor
+# plot_destination_funding_donor
 
-```{r function-plot_location_funding_donor}
+```{r function-plot_destination_funding_donor}
 #' Plot Destination Funding by Donor
 #'
-#' Shows funding received at a location from multiple donors.
+#' Shows funding received at a destination from multiple donors.
 #' Useful to identify funding hotspots or dependency.
 #'
 #' @param flows FTS flows dataframe.
-#' @param location_name Destination location name.
+#' @param destination_name Destination location name.
 #'
-#' @return A ggplot object showing total funding per donor for the location.
+#' @return A ggplot object showing total funding per donor for the destination.
 #' @importFrom ggplot2 ggplot aes geom_col coord_flip labs  scale_y_continuous
 #' @importFrom dplyr  filter group_by summarise
 #' @importFrom tidyr unnest
 #' @import unhcrthemes
 #' @export
-plot_location_funding_donor <- function(flows, location_name) {
+plot_destination_funding_donor <- function(flows, destination_name) {
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     tidyr::unnest(destinationObjects,
                   names_repair = "unique",
                   names_sep = "_") |>
     dplyr::filter(destinationObjects_type == "Location",
-                  destinationObjects_name == location_name) |>
+                  destinationObjects_name == destination_name) |>
     tidyr::unnest(sourceObjects,
                   names_repair = "unique",
                   names_sep = "_") |>
@@ -772,7 +988,7 @@ plot_location_funding_donor <- function(flows, location_name) {
     ggplot2::geom_col(fill = "darkorange") +
     ggplot2::coord_flip() +
     ggplot2::labs(
-      title = paste0("Funding for Destination: ", location_name),
+      title = paste0("Funding for Destination: ", destination_name),
       subtitle = "Funding contributed by each donor",
       x = "Donor",
       y = "Funding (USD)",
@@ -785,33 +1001,35 @@ plot_location_funding_donor <- function(flows, location_name) {
 }
 ```
   
-```{r example-plot_location_funding_donor}
-p <- plot_location_funding_donor(flows, location_name= "Burundi")
+```{r example-plot_destination_funding_donor, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+p <- plot_destination_funding_donor(flows, destination_name= "Burundi")
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
-```{r tests-plot_location_funding_donor}
-test_that("plot_location_funding_donor works", {
-  expect_true(inherits(plot_location_funding_donor, "function")) 
+```{r tests-plot_destination_funding_donor}
+test_that("plot_destination_funding_donor works", {
+  expect_true(inherits(plot_destination_funding_donor, "function")) 
 })
 ```
 
-# plot_location_heatmap
+# plot_destination_heatmap
 
-```{r function-plot_location_heatmap}
+```{r function-plot_destination_heatmap}
 #' Plot Top Donors Heatmap
 #'
 #' Visualizes the total funding from top donors to recipient organizations
-#' for a given location. Correctly handles deeply nested FTS destinationObjects.
+#' for a given destination.
 #'
 #' @param flows FTS flows dataframe
-#' @param location_name Name of the destination location to filter for
+#' @param destination_name Name of the destination location to filter for
 #' @param top_n Number of top donors to display (default = 5)
 #'
 #' @return A ggplot heatmap
@@ -820,8 +1038,8 @@ test_that("plot_location_funding_donor works", {
 #' @importFrom stringi stri_enc_toutf8
 #' @importFrom purrr map map_df
 #' @export
-plot_location_heatmap <- function(flows, location_name, top_n = 5) {
-  
+plot_destination_heatmap <- function(flows, destination_name, top_n = 5) {
+   flows <- filter_flows_for_indicators(flows)
   # ---- STEP 1: Expand nested destination objects ----
   dest_expanded <- flows |>
     dplyr::mutate(destinationObjects2 = destinationObjects) |>
@@ -829,18 +1047,18 @@ plot_location_heatmap <- function(flows, location_name, top_n = 5) {
                   names_repair = "unique",
                   names_sep = "_")
   
-  # ---- STEP 2: Filter for location (case-insensitive) ----
+  # ---- STEP 2: Filter for destination (case-insensitive) ----
   flows_loc <- dest_expanded |>
     dplyr::filter(
       destinationObjects_type == "Location",
-      tolower(destinationObjects_name) == tolower(location_name)
+      tolower(destinationObjects_name) == tolower(destination_name)
     )
   
   if (nrow(flows_loc) == 0) {
-    warning(paste("No flows found for location:", location_name))
+    warning(paste("No flows found for destination:", destination_name))
     return(
       ggplot2::ggplot() +
-        ggplot2::labs(title = paste("No data for", location_name))
+        ggplot2::labs(title = paste("No data for", destination_name))
     )
   }
   
@@ -865,7 +1083,7 @@ plot_location_heatmap <- function(flows, location_name, top_n = 5) {
     dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE), .groups = "drop")
   
   if (nrow(flow_data) == 0) {
-    warning("No Donor → Recipient organization flows for this location.")
+    warning("No Donor to Recipient organization flows for this destination.")
     return(ggplot2::ggplot() + ggplot2::labs(title = "No organization-level data"))
   }
   
@@ -926,7 +1144,7 @@ plot_location_heatmap <- function(flows, location_name, top_n = 5) {
     ) +
     
     ggplot2::labs(
-      title = paste0("Top ", top_n, " Donors → Recipients for ", location_name),
+      title = paste0("Top ", top_n, " Donors to Recipients for ", destination_name),
       subtitle = "Organization-level flows extracted from FTS nested structures",
       x = "Recipient Organization",
       y = "Donor Organization",
@@ -937,20 +1155,22 @@ plot_location_heatmap <- function(flows, location_name, top_n = 5) {
 }
 ```
   
-```{r example-plot_location_heatmap}
-p <- plot_location_heatmap(flows, location_name= "Burundi", top_n = 5)
+```{r example-plot_destination_heatmap, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
+p <- plot_destination_heatmap(flows, destination_name= "Burundi", top_n = 5)
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
-```{r tests-plot_location_heatmap}
-test_that("plot_location_heatmap works", {
-  expect_true(inherits(plot_location_heatmap, "function")) 
+```{r tests-plot_destination_heatmap}
+test_that("plot_destination_heatmap works", {
+  expect_true(inherits(plot_destination_heatmap, "function")) 
 })
 ```
 
@@ -972,7 +1192,7 @@ test_that("plot_location_heatmap works", {
 #' @import unhcrthemes
 #' @export
 plot_funding_status_timeline <- function(flows) {
-  
+   flows <- filter_flows_for_indicators(flows)
   df <- flows |>
     dplyr::group_by(budgetYear, status) |>
     dplyr::summarise(total_usd = sum(amountUSD, na.rm = TRUE), .groups = "drop")
@@ -995,22 +1215,132 @@ plot_funding_status_timeline <- function(flows) {
 }
 ```
   
-```{r example-plot_funding_status_timeline}
+```{r example-plot_funding_status_timeline, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_funding_status_timeline(flows)
 
 # getting LLm story
-story <- generate_plot_story(p, max_tokens = 300)
-cat(story)
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p)
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
+
+`r story`
   
 ```{r tests-plot_funding_status_timeline}
 test_that("plot_funding_status_timeline works", {
   expect_true(inherits(plot_funding_status_timeline, "function")) 
 })
 ```
+
+
+# generate_report
+     
+  
+```{r function-generate_report}
+#' Generate Quarto HTML / PDF Country Factsheets in Batch
+#'
+#' This function renders the 'Country_Factsheet' Quarto template for a list of
+#' countries, generating a report file for each.
+#'
+#' @param type either donor recipient or destination.
+#' @param name name of  donor recipient or destination if NULL batch process them
+#'
+#' @importFrom dplyr filter select pull
+#' @importFrom quarto quarto_render
+#' @importFrom here here
+#'
+#' @return nothing, reports are generated in the specified folder.
+#'
+#' @export
+generate_report <- function(type="donor",
+                            name=NULL) {
+  
+  template_path = system.file(paste0("_extension/", type,"/template.qmd"), 
+                                package = "ftsAnalysis")
+  ## Create the outfolder if it does not exist
+  folder <- "docs/reports"
+  output_dir <- here::here(folder)
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+    message("Created output directory: ", output_dir)
+  }
+  
+  # Ensure template exists
+  if (!file.exists(template_path)) {
+    stop("Quarto template not found at: ", template_path, 
+         ". Please check the template_path argument.")
+  }
+  
+  flows <- filter_flows_for_indicators(flows)
+  # --- Loop through each country for batch rendering ---
+  if ( is.null(name)){
+    if(type == "donor") {
+      name <- flows |>
+                tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
+                dplyr::filter(sourceObjects_type == "Organization") |>
+                dplyr::pull(sourceObjects_name) |>
+                unlist() |>
+                unique()
+      # dput(names(name))
+      # dput(levles(factor(name$sourceObjects_type))
+    }
+  
+    if(type == "recipient") {
+      name <- flows |>
+                tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+                dplyr::filter(destinationObjects_type == "Organization") |>
+                dplyr::pull(destinationObjects_name) |>
+                unlist() |>
+                unique()
+    }
+    
+    
+    if(type == "destination") {
+      name <- flows |>
+                tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
+                dplyr::filter(destinationObjects_type == "Location") |>
+                dplyr::pull(destinationObjects_name) |>
+                unlist() |>
+                unique()
+    }
+  } 
+  
+  for ( this in name) {
+    
+    # 2. Define Output Filename and Path
+    output_filename <- paste0('ftsAnalysis-', type, '-', this, '.html')
+    output_filepath <- here::here(folder, output_filename)
+    
+    message("Rendering report for ", name,  "...")
+    
+    # 3. Render the Quarto document
+    tryCatch({
+      quarto::quarto_render(
+        input = template_path,
+        output_file = output_filepath,
+        # Pass parameters to the YAML header and R code chunks
+        execute_params = list(name = this )
+      )
+      message("Successfully generated: ", output_filename)
+    }, error = function(e) {
+      warning("Failed to render report for ", this, ": ", e$message)
+    })
+  }
+}
+```
+  
+```{r example-generate_report}
+#generate_report(type = "donor")
+```
+  
+```{r tests-generate_report}
+test_that("generate_report works", {
+  expect_true(inherits(generate_report, "function")) 
+})
+```
+  
 
 
 ```{r development-inflate, eval=FALSE}

@@ -31,7 +31,7 @@ donors <- indicator_donor_funding_consistency(flows)
 table(donors$Funding_Consistency_Index)
 #> 
 #>   1 
-#> 249 
+#> 247 
 # library(ggplot2)
 # ggplot(donors, aes(x = Funding_Consistency_Index)) +
 #   geom_histogram(fill = "steelblue", color = "white") +

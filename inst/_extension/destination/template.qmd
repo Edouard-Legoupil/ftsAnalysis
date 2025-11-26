@@ -1,5 +1,93 @@
 ---
-title: "template"
-format: html
+title: "Humanitarian Funding Flows Analisis  "
+subtitle: "for Destination: {{< r name >}}"
+format:
+  html:
+    toc: true
+    code-fold: true
+    self-contained: true
+params:
+  name: "Burundi"
 ---
 
+```{r setup, include=FALSE}
+# Load necessary libraries 
+library(ftsAnalysis)
+# Set default Quarto options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# Access parameters passed during rendering
+destination_name <- params$name
+
+
+```
+
+# Overview
+
+# plot_destination_funding_destination
+  
+```{r example-plot_destination_funding_destination}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_destination_funding_destination(flows, destination_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  
+
+# plot_destination_funding_donor
+  
+```{r example-plot_destination_funding_donor}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_destination_funding_donor(flows, destination_name)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  
+
+# plot_destination_heatmap
+  
+```{r example-plot_destination_heatmap}
+#| fig.retina: 2.0
+#| fig.width: 8.0
+#| fig.asp: 0.618
+#| fig.align: center
+#| out.width: 90%
+
+p <- plot_destination_heatmap(flows, destination_name , top_n = 5)
+
+# getting LLm story
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+# cat(story)
+# and plot with more powerful subtitle
+dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
+p + ggplot2::labs(subtitle = dubbed)
+```
+
+
+`r story`
+  

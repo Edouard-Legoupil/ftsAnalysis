@@ -1122,7 +1122,8 @@ test_that("indicator_cross_donor_systemic_destination_alignment works", {
 #' @return A tibble with columns `donor`, `recipient`, and `Relationship_Duration_Index`.
 #' @importFrom dplyr filter group_by summarise mutate rename
 #' @export
-indicator_donor_recipient_relationship_duration <- function(flows, donor_recipient_pairs = NULL, 
+indicator_donor_recipient_relationship_duration <- function(flows, 
+                                                            donor_recipient_pairs = NULL, 
                                                             donors = NULL, 
                                                            recipient_name = NULL ) {
   
@@ -1148,9 +1149,9 @@ indicator_donor_recipient_relationship_duration <- function(flows, donor_recipie
                                                 by = c("donor", "recipient"))
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
   
   return(df)
@@ -1242,9 +1243,9 @@ indicator_donor_recipient_funding_growth <- function(flows, donor_recipient_pair
   
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
   
   return(df)
@@ -1336,9 +1337,9 @@ indicator_donor_recipient_stability <- function(flows, donor_recipient_pairs = N
   
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
   
   return(df)
@@ -1432,10 +1433,11 @@ indicator_donor_recipient_concentration <- function(flows, donor_recipient_pairs
   
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
+  
   return(df)
 }
 ```
@@ -1527,10 +1529,11 @@ indicator_donor_recipient_trend <- function(flows, donor_recipient_pairs = NULL,
                                                 by = c("donor", "recipient"))
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
+  
   return(df)
 }
 ```
@@ -1625,9 +1628,9 @@ indicator_donor_recipient_reciprocity <- function(flows, donor_recipient_pairs =
   
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
   
   return(df)
@@ -1962,6 +1965,8 @@ test_that("indicator_donor_destination_concentration works", {
 #'
 #' @return A tibble with `donor`, `destination`, `Earmarking_Flexibility`,
 #'         and `total_amount`.
+#' @importFrom  stats sd weighted.mean
+#' 
 #' @export
 indicator_donor_destination_earmarking_flexibility <- function(flows) {
   

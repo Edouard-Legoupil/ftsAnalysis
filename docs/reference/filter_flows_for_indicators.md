@@ -8,31 +8,23 @@ funding flow data.
 ## Usage
 
 ``` r
-filter_flows_for_indicators(flows)
+filter_flows_for_indicators(flows, fromyear = 2020)
 ```
 
 ## Arguments
 
 - flows:
 
-  A tibble or dataframe containing FTS funding flows, with at minimum
-  the following columns:
+  A tibble or dataframe containing FTS funding flows from OCHA API
 
-  - `boundary`: classification of flow direction relative to a search
-    boundary
+- fromyear:
 
-  - `childFlowIds`: list-column of IDs of downstream child flows
-
-  - `flowType`: flow categorization ("Carryover", "Parked", "Pass
-    through", "Standard")
-
-  - `budgetYear`: year of budget attribution (character, factor, or
-    numeric)
+  default 2020
 
 ## Value
 
 A tibble of cleaned and normalized flows suitable for all donor-,
-recipient-, destination-, and donor→recipient indicator functions. The
+recipient-, destination-, and donor-\>recipient indicator functions. The
 returned dataset contains only incoming, non-parent, non-parked flows
 with numeric budget years.
 
@@ -65,7 +57,7 @@ analytical scope enter the indicator dataset.
 ### 2. Parent/Child Flow Deduplication
 
 FTS allows funding flows to be "chained" to represent cascading funding
-(donor → agency → partner). Parent flows are typically high-level
+(donor -\> agency -\> partner). Parent flows are typically high-level
 envelopes; child flows represent operational allocations.
 
 This function:
@@ -118,5 +110,9 @@ they should apply a custom filter before calling this function.
 ## Examples
 
 ``` r
-#cleaned <- filter_flows_for_indicators(flows)
+nrow(flows)
+#> [1] 22441
+cleaned <- filter_flows_for_indicators(flows)
+nrow(cleaned)
+#> [1] 11496
 ```

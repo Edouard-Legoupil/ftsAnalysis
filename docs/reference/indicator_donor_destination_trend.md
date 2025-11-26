@@ -59,5 +59,5 @@ ggplot(donor, aes(x = DonorDestination_Focus_Trend)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 187 rows containing non-finite outside the scale range (`stat_bin()`).
+#> Warning: Removed 146 rows containing non-finite outside the scale range (`stat_bin()`).
 ```

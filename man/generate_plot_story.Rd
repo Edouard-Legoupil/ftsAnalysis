@@ -4,7 +4,13 @@
 \alias{generate_plot_story}
 \title{Generate Humanitarian Data Story from ggplot}
 \usage{
-generate_plot_story(plot, max_tokens = 30, provider = NULL, model = NULL)
+generate_plot_story(
+  plot,
+  max_tokens = 30,
+  provider = NULL,
+  model = NULL,
+  clean_response = TRUE
+)
 }
 \arguments{
 \item{plot}{A \code{ggplot} object from ggplot2.}
@@ -14,11 +20,15 @@ for the narrative (default = 30).}
 
 \item{provider}{Optional character string specifying the provider. Options
 include:
-\code{"openai"}, \code{"gemini"}, \code{"anthropic"}, \code{"ollama"}. If \code{NULL},
+\code{"openai"}, \code{"gemini"}, \code{"anthropic"}, \code{"ollama"}, \code{"azure"}. If \code{NULL},
 auto-detect from environment keys.}
 
-\item{model}{Optional character string specifying the model name. If \code{NULL},
-a default model for the chosen provider will be used.}
+\item{model}{Optional character string specifying the model name. For Azure,
+this is typically the deployment name. If \code{NULL}, a default model for the
+chosen provider will be used.}
+
+\item{clean_response}{Logical. Whether to clean the response by removing
+thinking tags and other artifacts (default = TRUE).}
 }
 \value{
 A character string containing a storytelling narrative focused on
@@ -27,21 +37,23 @@ humanitarian data.
 \description{
 This function takes a ggplot2 object and generates a storytelling narrative
 focused on humanitarian insights. It uses the \{ellmer\} package to call
-a large language model from a supported provider.
+a large or small language model from a supported provider.
 }
 \details{
-The narrative can be used as a full‑text explanation or a concise subtitle
-for plots. The LLM has access to the plot’s data (truncated for efficiency),
-title, subtitle, and caption. Both provider and model can be chosen explicitly
-or detected automatically based on which API key environment variable is set.
+If you do not have API keys or need to work offline, simply get ollama and
+look at top reasoning models - https://ollama.com/search?c=thinking
 
 Setup:
 \enumerate{
 \item Install \{ellmer\}: \code{install.packages("ellmer")}
-\item Use Ollama or Set your API key in your environment, for example:
-\code{Sys.setenv(OPENAI_API_KEY = "<YOUR_OPENAI_KEY>")}
-\code{Sys.setenv(GEMINI_API_KEY = "<YOUR_GOOGLE_GEMINI_KEY>")}
-\code{Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")}
+\item Set your API key in your environment. For Azure OpenAI, use the standard
+OpenAI key variable:
+\code{Sys.setenv(OPENAI_API_KEY = "<YOUR_AZURE_OPENAI_KEY>")}
+\item When using Azure, set \code{provider = "azure"} and provide the env variables
+\code{Sys.setenv(AZURE_OPENAI_ENDPOINT = "<YOUR_AZURE_ENDPOINT>")}
+\code{Sys.setenv(AZURE_OPENAI_API_VERSION = "<YOUR_AZURE_OPENAI_API_VERSION>")}
+The best place to set this is in .Renviron, which you can easily edit by
+calling \code{usethis::edit_r_environ()}
 }
 }
 \examples{
@@ -54,8 +66,9 @@ p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
         subtitle = "Fuel consumption vs weight",
         caption = "Source: mtcars dataset")
 
-story <- generate_plot_story(p)
-cat(story)
+generate_plot_story(p, provider = "ollama", model = "deepseek-r1")
+
+story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # To use as subtitle:
 p + ggplot2::labs(subtitle = story)
 }

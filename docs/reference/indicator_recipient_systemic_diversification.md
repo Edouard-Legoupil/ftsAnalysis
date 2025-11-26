@@ -62,5 +62,5 @@ ggplot(recipients, aes(x = Recipient_Diversification_Index)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 600 rows containing non-finite outside the scale range (`stat_bin()`).
+#> Warning: Removed 469 rows containing non-finite outside the scale range (`stat_bin()`).
 ```

@@ -22,11 +22,13 @@ across budget years. Useful for tracking donor disbursement progress."></head><b
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
     <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/edouard-legoupil/ftsAnalysis/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -36,7 +38,7 @@ across budget years. Useful for tracking donor disbursement progress."></head><b
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Plot Funding Timeline by Status</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/edouard-legoupil/ftsAnalysis/blob/HEAD/R/plot_funding_status_timeline.R" class="external-link"><code>R/plot_funding_status_timeline.R</code></a></small>
       <div class="d-none name"><code>plot_funding_status_timeline.Rd</code></div>
     </div>
 
@@ -68,22 +70,11 @@ across budget years. Useful for tracking donor disbursement progress.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">plot_funding_status_timeline</span><span class="op">(</span><span class="va">flows</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># getting LLm story</span></span></span>
-<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">story</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> This visualization maps the critical journey of humanitarian funding, tracking its evolution from initial pledges to firm commitments and, ultimately, to actual paid disbursements. While decades past showed a steady flow, the 2020s mark a dramatic escalation in humanitarian financial needs, reflected in rapidly increasing pledges and commitments.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> However, a striking disparity emerges when we look at the projections for 2024 and 2025. While billions of dollars are pledged and committed for future humanitarian action – for instance, over $10 billion in commitments for 2025 alone – the actual paid funding remains a fraction of these announced intentions. For 2025, only about $4.4 million is shown as paid, starkly contrasting the significant commitments.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> This widening gap highlights a persistent challenge: converting donor goodwill and financial promises into tangible resources on the ground. The humanitarian system relies on the swift and efficient movement of funds to address escalating crises. Delays in disbursement can severely impact aid delivery, underscoring the critical need to bridge the gap between financial commitment and life-saving action.</span>
+<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"azure"</span>, model <span class="op">=</span> <span class="st">"gpt-4.1-mini"</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># cat(story)</span></span></span>
 <span class="r-in"><span><span class="co"># and plot with more powerful subtitle</span></span></span>
-<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
+<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"azure"</span>, model <span class="op">=</span> <span class="st">"gpt-4.1-mini"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">+</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>subtitle <span class="op">=</span> <span class="va">dubbed</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Removed 3 rows containing missing values or values outside the scale range</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> (`geom_line()`).</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Removed 3 rows containing missing values or values outside the scale range</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> (`geom_point()`).</span>
 <span class="r-plt img"><img src="plot_funding_status_timeline-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>
     </div>

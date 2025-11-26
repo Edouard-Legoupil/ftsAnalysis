@@ -1,8 +1,9 @@
 # `{ftsAnalysis}`
 
-The goal of `{ftsAnalysis}` is to provide a set of metrics, index,
-analysis and visualization to better understand data from [OCHA
-Financial Tracking
+The goal of
+[ftsAnalysis](https://edouard-legoupil.github.io/ftsAnalysis/) is to
+provide a set of metrics, index, analysis and visualization to better
+understand data from [OCHA Financial Tracking
 Service](https://fts.unocha.org/content/about-fts-using-fts-data).
 
 This package enables the creation of detailed reports, with included
@@ -37,6 +38,28 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
 
 ## All functions
 
+- [`analysis_competitive_intel_matrix()`](analysis_competitive_intel_matrix.md)
+  : Competitive Intelligence Matrix
+- [`analysis_donor_lifecycle_stage()`](analysis_donor_lifecycle_stage.md)
+  : Donor Lifecycle Stage Scoring
+- [`analysis_donor_network_metrics()`](analysis_donor_network_metrics.md)
+  : Donor-Destination Network Metrics
+- [`analysis_donor_segmentation()`](analysis_donor_segmentation.md) :
+  Donor Segmentation (Priority Matrix)
+- [`analysis_fit_opportunity_model()`](analysis_fit_opportunity_model.md)
+  : Fit a simple Funding Opportunity Model (logistic)
+- [`analysis_funding_forecast()`](analysis_funding_forecast.md) :
+  Aggregate historical amounts by month and forecast future funding for
+  a donor or recipient.
+- [`analysis_portfolio_scores()`](analysis_portfolio_scores.md) :
+  Compute Portfolio Scores for a Recipient
+- [`analysis_prepare_opportunity_dataset()`](analysis_prepare_opportunity_dataset.md)
+  : Prepare Funding Opportunity Dataset
+- [`analysis_systemic_network_insights()`](analysis_systemic_network_insights.md)
+  : Systemic: Network Density and Granularity Insights
+- [`analysis_wordcloud_from_flows()`](analysis_wordcloud_from_flows.md)
+  : Generate a Word Cloud from Flow Descriptions
+- [`clean_llm_response()`](clean_llm_response.md) : Clean LLM Response
 - [`fetch_fts_data()`](fetch_fts_data.md) : Fetch FTS Flow Data with
   Pagination
 - [`filter_flows_for_indicators()`](filter_flows_for_indicators.md) :
@@ -44,6 +67,8 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
 - [`flows`](flows.md) : FTS Humanitarian Funding Flows Dataset
 - [`generate_plot_story()`](generate_plot_story.md) : Generate
   Humanitarian Data Story from ggplot
+- [`generate_report()`](generate_report.md) : Generate Quarto HTML / PDF
+  Country Factsheets in Batch
 - [`indicator_cross_donor_systemic_destination_alignment()`](indicator_cross_donor_systemic_destination_alignment.md)
   : Donors Systemic: Destination Alignment (Optimized)
 - [`indicator_destination_dependency()`](indicator_destination_dependency.md)
@@ -116,6 +141,12 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
   : Funding Volume Share
 - [`indicator_recipient_systemic_diversification()`](indicator_recipient_systemic_diversification.md)
   : Recipient Systemic: Diversification Index
+- [`plot_destination_funding_destination()`](plot_destination_funding_destination.md)
+  : Plot Funding by Destination Location
+- [`plot_destination_funding_donor()`](plot_destination_funding_donor.md)
+  : Plot Destination Funding by Donor
+- [`plot_destination_heatmap()`](plot_destination_heatmap.md) : Plot Top
+  Donors Heatmap
 - [`plot_donor_cluster_coverage()`](plot_donor_cluster_coverage.md) :
   Plot Donor Cluster Coverage
 - [`plot_donor_earmarking()`](plot_donor_earmarking.md) : Plot Donor
@@ -126,12 +157,6 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
   Plot Donor Funding Over Time
 - [`plot_funding_status_timeline()`](plot_funding_status_timeline.md) :
   Plot Funding Timeline by Status
-- [`plot_location_funding_destination()`](plot_location_funding_destination.md)
-  : Plot Funding by Destination Location
-- [`plot_location_funding_donor()`](plot_location_funding_donor.md) :
-  Plot Destination Funding by Donor
-- [`plot_location_heatmap()`](plot_location_heatmap.md) : Plot Top
-  Donors Heatmap
 - [`plot_recipient_cofunding()`](plot_recipient_cofunding.md) : Plot
   Recipient Co-Funding Rate
 - [`plot_recipient_contribution_type()`](plot_recipient_contribution_type.md)
@@ -140,6 +165,7 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
   : Plot Recipient Funding Composition by Donor
 - [`plot_recipient_grandbargain()`](plot_recipient_grandbargain.md) :
   Plot Grand Bargain Earmarking by Recipient
+- [`slugify()`](slugify.md) : slugify
 
 # Articles
 
@@ -147,4 +173,5 @@ Sys.setenv(ANTHROPIC_API_KEY = "<YOUR_ANTHROPIC_KEY>")
 
 - [1-Data Tidying](1-data-tidying.md):
 - [2-Indicators](2-indicators.md):
+- [4-Analysis](4-analysis.md):
 - [5-Visualisation](5-visualisation.md):

@@ -2,6 +2,9 @@
 
 ``` r
 library(ftsAnalysis)
+#> Registered S3 method overwritten by 'quantmod':
+#>   method            from
+#>   as.zoo.data.frame zoo
 ```
 
 FTS focuses on humanitarian funding flows that is provided
@@ -285,6 +288,73 @@ variables are available
 
 ## filter_flows_for_indicators
 
+When analyzing funding flow data from FTS (Financial Tracking Service),
+we need to apply pre-processing and filtering rules to compute donor-,
+recipient-, or destination-level indicators .
+
+The FTS data model contains several elements—such as funding chains,
+boundaries, parent/child flows, and “parked” envelopes—that must be
+normalized prior to any aggregation. This enforces the official FTS
+logic to ensure indicators are computed without double-counting or
+misclassification of funding flows.
+
+**1. Boundary Filtering** Only \_\_incoming\_\_flows are retained.
+Incoming flows represent funding entering a boundary (e.g., affected
+country + year, appeal, donor-country-year). This is the standard FTS
+method for calculating donor contributions, and prevents contamination
+from:
+
+- Internal flows (money moving within the boundary)
+- Outgoing flows (money leaving the boundary)
+- Irrelevant flows (fully outside the boundary)
+
+Boundary filtering ensures that only flows relevant to the selected
+analytical scope enter the indicator dataset.
+
+**2. Parent/Child Flow Deduplication** FTS allows funding flows to be
+“chained” to represent cascading funding (donor -\> agency -\> partner).
+Parent flows are typically high-level envelopes; child flows represent
+operational allocations.
+
+We need to: \* Identifies parents by the presence of one or more
+`childFlowIds`. \* Removes all parent flows from the dataset.
+
+This prevents double-counting parent envelopes together with their child
+breakdowns and ensures only operational flows are used in indicator
+calculations.
+
+**3. Removal of “Parked” Flows** Flows with `flowType == "Parked"`
+represent undecided envelopes awaiting breakdown into child flows (e.g.,
+large ECHO decisions or multi-year envelopes).
+
+These should not be used for: \* donor funding totals \* donor–recipient
+relationships \* sector or geographic alignment indicators
+
+We need to remove them entirely, relying instead on their child flows
+when available.
+
+**4. Budget Year Normalization**
+
+The `budgetYear` column is converted safely to numeric to support
+time-series indicators such as: \* funding trends \* relationship
+duration \* consistency indices
+
+Non-numeric and malformed values are converted to `NA` with warnings
+suppressed.
+
 ``` r
-#cleaned <- filter_flows_for_indicators(flows)
+nrow(flows)
+#> [1] 22441
+cleaned <- filter_flows_for_indicators(flows)
+nrow(cleaned)
+#> [1] 11496
+```
+
+## slugify
+
+``` r
+strings <- c("Café au Lait", "Niño Español", "Data_Science_Project", "--test--string--")
+slugify(strings)
+#> [1] "cafe-au-lait"         "nino-espanol"         "data-science-project"
+#> [4] "test-string"
 ```

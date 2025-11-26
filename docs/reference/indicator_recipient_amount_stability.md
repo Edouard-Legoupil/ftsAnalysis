@@ -56,5 +56,5 @@ ggplot(recipients, aes(x = Amount_Stability)) +
   )
   )
 #> `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
-#> Warning: Removed 564 rows containing non-finite outside the scale range (`stat_bin()`).
+#> Warning: Removed 455 rows containing non-finite outside the scale range (`stat_bin()`).
 ```

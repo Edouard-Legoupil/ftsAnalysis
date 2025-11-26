@@ -26,7 +26,6 @@ pkgload::load_all(export_all = FALSE)
 
 # compile_donor_recipient_metrics
 
-  
 ```{r function-compile_donor_recipient_metrics}
 #' Compile Donor–Recipient Metrics
 #'
@@ -76,9 +75,8 @@ compile_donor_recipient_metrics <- function(
   
   # --- Compute all donor→recipient indicators ---
   
-  donors <- indicator_donor_funding_consistency(flows,
-                         donors)
-  donors <- indicator_donor_relationship_duration(flows, donors,
+  donors <- indicator_donor_funding_consistency(flows)
+  donors <- indicator_donor_relationship_duration(flows,  
                          donors)
   donors <- indicator_donor_funding_growth(flows,
                          donors)

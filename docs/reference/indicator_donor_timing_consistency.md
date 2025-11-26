@@ -60,5 +60,5 @@ ggplot(donors, aes(x = Timing_Consistency)) +
     "Source: Financial Tracking Service (FTS) API."
   )
   )
-#> Warning: Removed 119 rows containing non-finite outside the scale range (`stat_bin()`).
+#> Warning: Removed 106 rows containing non-finite outside the scale range (`stat_bin()`).
 ```

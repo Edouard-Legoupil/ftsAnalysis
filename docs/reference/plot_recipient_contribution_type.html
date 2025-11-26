@@ -24,11 +24,13 @@ contribution type
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
     <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/edouard-legoupil/ftsAnalysis/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -38,7 +40,7 @@ contribution type
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Plot Recipient Funding by Contribution Type</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/edouard-legoupil/ftsAnalysis/blob/HEAD/R/plot_recipient_contribution_type.R" class="external-link"><code>R/plot_recipient_contribution_type.R</code></a></small>
       <div class="d-none name"><code>plot_recipient_contribution_type.Rd</code></div>
     </div>
 
@@ -77,17 +79,10 @@ contribution type
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># getting LLm story</span></span></span>
-<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">story</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> The United Nations High Commissioner for Refugees (UNHCR) relies heavily on global support to assist millions displaced by conflict and disaster. This visualization starkly reveals the dominant role of financial contributions in funding UNHCR's vital operations.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> The agency receives nearly 900 times more funding in cash than in goods. Specifically, financial contributions represent the vast majority of the support, totaling over $1.4 billion, while in-kind aid amounts to just under $1.6 million.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> This overwhelming preference for flexible financial funding provides UNHCR with crucial agility. Cash empowers the agency to respond effectively to evolving crises, procuring precise goods and services where they are most needed, often buying locally to support affected economies. While in-kind donations can be valuable, flexible financial support ensures resources are optimized to deliver tailored and timely assistance, protecting the world's most vulnerable with maximum efficiency.</span>
+<span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"azure"</span>, model <span class="op">=</span> <span class="st">"gpt-4.1-mini"</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># cat(story)</span></span></span>
 <span class="r-in"><span><span class="co"># and plot with more powerful subtitle</span></span></span>
-<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Using <span style="color: #00BB00;">model</span> = <span style="color: #0000BB;">"gemini-2.5-flash"</span>.</span>
+<span class="r-in"><span><span class="va">dubbed</span> <span class="op">&lt;-</span> <span class="fu"><a href="generate_plot_story.html">generate_plot_story</a></span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"azure"</span>, model <span class="op">=</span> <span class="st">"gpt-4.1-mini"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">p</span> <span class="op">+</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>subtitle <span class="op">=</span> <span class="va">dubbed</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_recipient_contribution_type-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>

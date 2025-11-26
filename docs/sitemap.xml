@@ -5,15 +5,28 @@
 <url><loc>/LICENSE.html</loc></url>
 <url><loc>/articles/1-data-tidying.html</loc></url>
 <url><loc>/articles/2-indicators.html</loc></url>
+<url><loc>/articles/4-analysis.html</loc></url>
 <url><loc>/articles/5-visualisation.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
 <url><loc>/news/index.html</loc></url>
+<url><loc>/reference/analysis_competitive_intel_matrix.html</loc></url>
+<url><loc>/reference/analysis_donor_lifecycle_stage.html</loc></url>
+<url><loc>/reference/analysis_donor_network_metrics.html</loc></url>
+<url><loc>/reference/analysis_donor_segmentation.html</loc></url>
+<url><loc>/reference/analysis_fit_opportunity_model.html</loc></url>
+<url><loc>/reference/analysis_funding_forecast.html</loc></url>
+<url><loc>/reference/analysis_portfolio_scores.html</loc></url>
+<url><loc>/reference/analysis_prepare_opportunity_dataset.html</loc></url>
+<url><loc>/reference/analysis_systemic_network_insights.html</loc></url>
+<url><loc>/reference/analysis_wordcloud_from_flows.html</loc></url>
+<url><loc>/reference/clean_llm_response.html</loc></url>
 <url><loc>/reference/fetch_fts_data.html</loc></url>
 <url><loc>/reference/filter_flows_for_indicators.html</loc></url>
 <url><loc>/reference/flows.html</loc></url>
 <url><loc>/reference/generate_plot_story.html</loc></url>
+<url><loc>/reference/generate_report.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 <url><loc>/reference/indicator_cross_donor_systemic_destination_alignment.html</loc></url>
 <url><loc>/reference/indicator_destination_dependency.html</loc></url>
@@ -53,6 +66,9 @@
 <url><loc>/reference/indicator_recipient_cofunding_rate.html</loc></url>
 <url><loc>/reference/indicator_recipient_funding_share.html</loc></url>
 <url><loc>/reference/indicator_recipient_systemic_diversification.html</loc></url>
+<url><loc>/reference/plot_destination_funding_destination.html</loc></url>
+<url><loc>/reference/plot_destination_funding_donor.html</loc></url>
+<url><loc>/reference/plot_destination_heatmap.html</loc></url>
 <url><loc>/reference/plot_donor_cluster_coverage.html</loc></url>
 <url><loc>/reference/plot_donor_earmarking.html</loc></url>
 <url><loc>/reference/plot_donor_flowtype.html</loc></url>
@@ -65,5 +81,6 @@
 <url><loc>/reference/plot_recipient_contribution_type.html</loc></url>
 <url><loc>/reference/plot_recipient_funding_composition.html</loc></url>
 <url><loc>/reference/plot_recipient_grandbargain.html</loc></url>
+<url><loc>/reference/slugify.html</loc></url>
 </urlset>
 
