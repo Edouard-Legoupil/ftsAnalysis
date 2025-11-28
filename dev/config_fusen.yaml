@@ -9,10 +9,10 @@ flat_dev_1_data.Rmd:
   - tests/testthat/test-fetch_fts_data.R
   - tests/testthat/test-filter_flows_for_indicators.R
   - tests/testthat/test-slugify.R
-  vignettes: vignettes/1-data-tidying.Rmd
+  vignettes: vignettes/doc-1-data-tidying.Rmd
   inflate:
     flat_file: dev/flat_dev_1_data.Rmd
-    vignette_name: 1-Data Tidying
+    vignette_name: Doc-1-Data Tidying
     open_vignette: true
     check: true
     document: true
@@ -96,10 +96,10 @@ flat_dev_2_indicator.Rmd:
   - tests/testthat/test-indicator_destination_funding_volatility.R
   - tests/testthat/test-indicator_destination_dependency.R
   - tests/testthat/test-indicator_destination_modality_balance.R
-  vignettes: vignettes/2-indicators.Rmd
+  vignettes: vignettes/doc-2-indicators.Rmd
   inflate:
     flat_file: dev/flat_dev_2_indicator.Rmd
-    vignette_name: 2-Indicators
+    vignette_name: Doc-2-Indicators
     open_vignette: true
     check: true
     document: true
@@ -123,18 +123,18 @@ flat_dev_4_analysis.Rmd:
   tests:
   - tests/testthat/test-analysis_wordcloud_from_flows.R
   - tests/testthat/test-analysis_systemic_network_insights.R
-  - tests/testthat/test-analysis_portfolio_scores.R
   - tests/testthat/test-analysis_prepare_opportunity_dataset.R
   - tests/testthat/test-analysis_fit_opportunity_model.R
-  - tests/testthat/test-analysis_competitive_intel_matrix.R
+  - tests/testthat/test-analysis_funding_forecast.R
+  - tests/testthat/test-analysis_portfolio_scores.R
   - tests/testthat/test-analysis_donor_lifecycle_stage.R
   - tests/testthat/test-analysis_donor_segmentation.R
-  - tests/testthat/test-analysis_funding_forecast.R
   - tests/testthat/test-analysis_donor_network_metrics.R
-  vignettes: vignettes/4-analysis.Rmd
+  - tests/testthat/test-analysis_competitive_intel_matrix.R
+  vignettes: vignettes/doc-4-analysis.Rmd
   inflate:
     flat_file: dev/flat_dev_4_analysis.Rmd
-    vignette_name: 4-Analysis
+    vignette_name: Doc-4-Analysis
     open_vignette: true
     check: true
     document: true
@@ -147,7 +147,6 @@ flat_dev_5_visualisation.Rmd:
   R:
   - R/clean_llm_response.R
   - R/generate_plot_story.R
-  - R/generate_report.R
   - R/plot_destination_funding_destination.R
   - R/plot_destination_funding_donor.R
   - R/plot_destination_heatmap.R
@@ -175,11 +174,25 @@ flat_dev_5_visualisation.Rmd:
   - tests/testthat/test-plot_destination_funding_donor.R
   - tests/testthat/test-plot_destination_heatmap.R
   - tests/testthat/test-plot_funding_status_timeline.R
-  - tests/testthat/test-generate_report.R
-  vignettes: vignettes/5-visualisation.Rmd
+  vignettes: vignettes/doc-5-visualisation.Rmd
   inflate:
     flat_file: dev/flat_dev_5_visualisation.Rmd
-    vignette_name: 5-Visualisation
+    vignette_name: Doc-5-Visualisation
+    open_vignette: true
+    check: true
+    document: true
+    overwrite: ask
+    clean: ask
+    codecov: false
+flat_dev_6_report.Rmd:
+  path: dev/flat_dev_6_report.Rmd
+  state: active
+  R: R/generate_report.R
+  tests: tests/testthat/test-destinations.R
+  vignettes: vignettes/ai-powered-reports.Rmd
+  inflate:
+    flat_file: dev/flat_dev_6_report.Rmd
+    vignette_name: AI Powered Reports
     open_vignette: true
     check: true
     document: true

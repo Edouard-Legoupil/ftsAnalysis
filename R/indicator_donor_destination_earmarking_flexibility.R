@@ -20,6 +20,8 @@
 #'
 #' @return A tibble with `donor`, `destination`, `Earmarking_Flexibility`,
 #'         and `total_amount`.
+#' @importFrom  stats sd weighted.mean
+#' 
 #' @export
 #' @examples
 #' donor_destination <- indicator_donor_destination_earmarking_flexibility(flows)

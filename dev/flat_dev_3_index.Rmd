@@ -675,7 +675,7 @@ These are only included in the present flat template file, their content will no
 
 #remotes::install_github("thinkr-open/checkhelper")
 # checkhelper::print_globals()
-fusen::inflate(flat_file = "dev/flat_dev_3_index.Rmd", vignette_name = "3-Index")
+fusen::inflate(flat_file = "dev/flat_dev_3_index.Rmd", vignette_name = "Doc-3-Index")
 ```
 
 

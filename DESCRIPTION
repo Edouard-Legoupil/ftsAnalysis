@@ -19,6 +19,8 @@ Imports:
     ellmer,
     forecast,
     ggplot2,
+    ggraph,
+    ggrepel,
     here,
     httr,
     igraph,
@@ -38,8 +40,6 @@ Imports:
     utils,
     wordcloud2
 Suggests: 
-    ggraph,
-    ggrepel,
     knitr,
     rmarkdown,
     testthat,

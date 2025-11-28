@@ -1,6 +1,7 @@
 ---
-title: "Humanitarian Funding Flows Analisis  "
-subtitle: "for Donor: {{< r name >}}"
+title: "Humanitarian Funding Flows Analysis  "
+subtitle: "`r paste('Donor Profile:', params$name)`"
+author: "AI Generated Analysis based on [OCHA Finantial Tracking Service Data API](https://fts.unocha.org/). Beware of data limitations and potential hallucinations! Thanks for reporting any [issues here](https://github.com/Edouard-Legoupil/ftsAnalysis/issues/new) -- [View all Reports](../articles/ai-powered-reports.html)"
 format:
   html:
     toc: true
@@ -11,19 +12,65 @@ params:
 ---
 
 ```{r setup, include=FALSE}
-# Load necessary libraries 
-library(ftsAnalysis)
 # Set default Quarto options
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+# Load necessary libraries 
+library(ftsAnalysis)
+library(ellmer)
 # Access parameters passed during rendering
-donor_name <- params$yname
+donor_name <- params$name
+```
 
+```{r summary}
+#| message: false
+#| warning: false
+#| include: false
+
+p1 <- plot_donor_funding_over_time(flows, donor_name)
+story1 <- generate_plot_story(p1, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+
+p2 <- plot_donor_earmarking(flows, donor_name)
+story2 <- generate_plot_story(p2, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+
+
+p3 <- plot_donor_flowtype(flows, donor_name)
+story3 <- generate_plot_story(p3, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+
+p4 <- plot_donor_cluster_coverage(flows, donor_name)
+story4 <- generate_plot_story(p4, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
+
+chat =  ellmer::chat_azure_openai(
+  system_prompt = "You are a humanitarian funding analyst.Your task is to build a concise executive summary to describe the profile of a specific donor based on provided information",
+  model = "gpt-4.1-mini",
+  api_version = Sys.getenv("AZURE_OPENAI_API_VERSION"),
+  endpoint = Sys.getenv("AZURE_OPENAI_ENDPOINT"),
+  api_key = Sys.getenv("AZURE_OPENAI_API_KEY"))
+
+
+
+exec <- chat$chat( paste0(" Build a short 300 words Donor Profile for ",
+                           donor_name, ". \n. Ground your summary on the below information:",
+                           "\n\n - 1. Funding History: \n",
+                           story1,
+                           "\n\n - 2. Earmaking Approach: \n",
+                           story2,
+                           "\n\n - 3. Contribution Type: \n",
+                           story3,
+                           "\n\n - 4. Sectoral Prioritisation: \n",
+                           story4,
+                          " \n\n INSTRUCTIONS: Do not repeat the provided content -Do not repeat the provided content - focus on extracting key high level information for a fund raisers audience"
+                           
+                           ))
 
 ```
 
-# Overview
+## Executive Summary
 
+`r exec`
 
+## Funding History
+
+`r story1`
   
 ```{r example-plot_donor_funding_over_time}
 #| fig.retina: 2.0
@@ -32,21 +79,19 @@ donor_name <- params$yname
 #| fig.align: center
 #| out.width: 90%
 
-p <- plot_donor_funding_over_time(flows, donor_name)
 
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 #cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
-print(p + ggplot2::labs(subtitle = dubbed))
+dubbed <- generate_plot_story(p1, provider = "azure", model = "gpt-4.1-mini")
+print(p1 + ggplot2::labs(subtitle = dubbed))
 
 ```
 
 
-`r story`
-  
 
+## Earmaking Approach  
+
+`r story2`  
   
 ```{r example-plot_donor_earmarking}
 #| fig.retina: 2.0
@@ -55,21 +100,20 @@ print(p + ggplot2::labs(subtitle = dubbed))
 #| fig.align: center
 #| out.width: 90%
 
-p <- plot_donor_earmarking(flows, donor_name)
 
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
-p + ggplot2::labs(subtitle = dubbed)
+dubbed <- generate_plot_story(p2, provider = "azure", model = "gpt-4.1-mini")
+p2 + ggplot2::labs(subtitle = dubbed)
 ```
 
   
-`r story`  
+
   
 
+## Contribution Type
 
+
+`r story3`
   
 ```{r example-plot_donor_flowtype}
 #| fig.retina: 2.0
@@ -78,20 +122,17 @@ p + ggplot2::labs(subtitle = dubbed)
 #| fig.align: center
 #| out.width: 90%
 
-p <- plot_donor_flowtype(flows, donor_name)
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
-p + ggplot2::labs(subtitle = dubbed)
+dubbed <- generate_plot_story(p3, provider = "azure", model = "gpt-4.1-mini")
+p3 + ggplot2::labs(subtitle = dubbed)
 ```
 
 
-`r story`
 
+## Sectoral Prioritisation
 
+`r story4`
   
 ```{r example-plot_donor_cluster_coverage}
 #| fig.retina: 2.0
@@ -100,15 +141,11 @@ p + ggplot2::labs(subtitle = dubbed)
 #| fig.align: center
 #| out.width: 90%
 
-p <- plot_donor_cluster_coverage(flows, donor_name)
 
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # cat(story)
 # and plot with more powerful subtitle
-dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
-p + ggplot2::labs(subtitle = dubbed)
+dubbed <- generate_plot_story(p4, provider = "azure", model = "gpt-4.1-mini")
+p4 + ggplot2::labs(subtitle = dubbed)
 ```
 
 
-`r story`

@@ -73,9 +73,10 @@ indicator_donor_recipient_concentration <- function(flows, donor_recipient_pairs
   
   
   if (!is.null(donors) && !is.null(recipient_name) && is.null(donor_recipient_pairs) ) {
-      df <- donor  |> 
-            dplyr::filter( recipient == recipient_name) |> 
-            dplyr::left_join(df,  by = c("donor"))
+      df <- donors  |> 
+            dplyr::left_join(df |> dplyr::filter( recipient == recipient_name)
+                             ,  by = c("donor"))
   }
+  
   return(df)
 }

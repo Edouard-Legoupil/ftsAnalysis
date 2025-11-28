@@ -3,10 +3,11 @@
 <url><loc>/CODE_OF_CONDUCT.html</loc></url>
 <url><loc>/LICENSE-text.html</loc></url>
 <url><loc>/LICENSE.html</loc></url>
-<url><loc>/articles/1-data-tidying.html</loc></url>
-<url><loc>/articles/2-indicators.html</loc></url>
-<url><loc>/articles/4-analysis.html</loc></url>
-<url><loc>/articles/5-visualisation.html</loc></url>
+<url><loc>/articles/ai-powered-reports.html</loc></url>
+<url><loc>/articles/doc-1-data-tidying.html</loc></url>
+<url><loc>/articles/doc-2-indicators.html</loc></url>
+<url><loc>/articles/doc-4-analysis.html</loc></url>
+<url><loc>/articles/doc-5-visualisation.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
@@ -82,5 +83,8 @@
 <url><loc>/reference/plot_recipient_funding_composition.html</loc></url>
 <url><loc>/reference/plot_recipient_grandbargain.html</loc></url>
 <url><loc>/reference/slugify.html</loc></url>
+<url><loc>/reports/ftsAnalysis-donor-france-government-of.html</loc></url>
+<url><loc>/reports/ftsAnalysis-donor-germany-government-of.html</loc></url>
+<url><loc>/reports/ftsAnalysis-donor-switzerland-government-of.html</loc></url>
 </urlset>
 

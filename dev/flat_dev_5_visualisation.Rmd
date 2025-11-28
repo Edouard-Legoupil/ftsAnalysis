@@ -1,5 +1,5 @@
 ---
-title: "flat_skeleton.Rmd empty"
+title: "Visualisation"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -14,9 +14,10 @@ library(testthat)
 pkgload::load_all(export_all = FALSE)
 ```
 
-# clean_llm_response
+# Using Language Models to build data stories
 
-  
+## clean_llm_response
+
 ```{r function-clean_llm_response}
 #' Clean LLM Response
 #'
@@ -101,7 +102,7 @@ test_that("clean_llm_response works", {
 ```
   
 
-# generate_plot_story
+## generate_plot_story
 
 ```{r function-generate_plot_story}
 #' Generate Humanitarian Data Story from ggplot
@@ -196,29 +197,25 @@ generate_plot_story <- function(plot,
   geoms_text <- paste(geoms, collapse = ", ")
   
   system_prompt <- paste0(
-    "You are a humanitarian data analysis expert. Your role is to:\n",
-    "1. Extract key humanitarian insights from a dataset and its visualization parameters\n",
-    "2. Create compelling, accessible narratives tailored for an executive audiences\n",
-    "3. Highlight patterns, trends, and implications for humanitarian response\n",
-    "4. Adapt interpretation depth based on available data and context\n",
-    "5. Use clear, plain language with appropriate emotional resonance\n\n",
+    "You are a humanitarian data analysis expert specialised in fundraising. Your role is to: \n",
+    "1. Extract, from a given dataset and its visualization parameters, key fund raising insights with quotable and specific data points \n",
+    "2. Create compelling, accessible narratives tailored for a humanitarian proposal writer audience \n",
+    "3. Highlight patterns, trends, and implications to consider when looking for funding opportunities \n",
+    "4. Adapt interpretation depth based on available data and context \n",
+    "5. Use clear, plain language with appropriate practical recommendations \n\n",
     
     "CRITICAL INSTRUCTIONS:\n",
     "- DO NOT include any thinking tags like <think> or </think> in your response\n",
     "- DO NOT use markdown formatting, asterisks, or special characters\n",
     "- Provide ONLY the final narrative text\n",
-    "- Your response should be clean plain text ready for display\n\n",
+    "- Your response should be clean plain text ready for display\n\n"
     
-    "Response Guidelines:\n",
-    "- Focus on the most significant patterns and their humanitarian relevance\n",
-    "- Suggest potential implications or actions\n",
-    "- Adjust the tone for an executive audience\n",
-    "- Craft a clear narrative arc with a beginning (context/problem), middle (analysis/discovery), and end (insights/implications/call for actions)\n"
   )
   
   # Build enhanced prompt
   prompt <- paste0(
     "VISUALIZATION CONTEXT:\n",
+    "Consider what each mapped variable represents and any data transformations applied.\n\n",
     "Title: ", title, "\n",
     "Subtitle: ", subtitle, "\n", 
     "Caption: ", caption, "\n",
@@ -227,19 +224,17 @@ generate_plot_story <- function(plot,
     "Layer mappings: ", layer_mappings_text, "\n", 
     "Scales: ", scale_info, "\n\n",
     
-    "DATA:\n", paste(plot_data_text, collapse = "\n"), "\n\n",
+    "Use the following DATA:\n", paste(plot_data_text, collapse = "\n"), "\n\n",
     
-    "TASK: Create a humanitarian data story using the provided data and visualization parameters.\n",
-    "Consider what each mapped variable represents and any data transformations applied.\n\n",
+    "TASK: Create a fund raising analysis using the provided data and visualization parameters.\n",
     
     "ADAPTIVE CONSTRAINTS:\n",
     "- Important! Maximum length for the generated output: ", max_tokens, " tokens\n",
     "- Prioritize clarity over completeness\n",
     "- Focus on 2-3 key insights if space is limited\n",
     "- Use concise but impactful language\n",
-    "- IMPORTANT: Provide only clean text output without any thinking tags or markdown\n\n",
+    "- IMPORTANT: Provide only clean text output without any thinking tags or markdown\n\n"
     
-    "What humanitarian story does this data tell, considering the variable mappings and any data transformations?"
   )
   
   # Auto-detect provider if not specified
@@ -359,7 +354,8 @@ test_that("generate_plot_story works", {
 })
 ```
 
-# plot_donor_funding_over_time
+# Donor Plots
+## plot_donor_funding_over_time
 
 ```{r function-plot_donor_funding_over_time}
 #' Plot Donor Funding Over Time
@@ -404,25 +400,19 @@ plot_donor_funding_over_time <- function(flows, donor_name) {
   
 ```{r example-plot_donor_funding_over_time, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_funding_over_time(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-#cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 print(p + ggplot2::labs(subtitle = dubbed))
 
 ```
 
-`r story`
-  
 ```{r tests-plot_donor_funding_over_time}
 test_that("plot_donor_funding_over_time works", {
   expect_true(inherits(plot_donor_funding_over_time, "function")) 
 })
 ```
 
-# plot_donor_earmarking
+## plot_donor_earmarking
 
 ```{r function-plot_donor_earmarking}
 #' Plot Donor Funding by Earmarking Type
@@ -467,16 +457,11 @@ plot_donor_earmarking <- function(flows, donor_name) {
   
 ```{r example-plot_donor_earmarking, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_earmarking(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
   
-`r story`  
   
 ```{r tests-plot_donor_earmarking}
 test_that("plot_donor_earmarking works", {
@@ -485,7 +470,7 @@ test_that("plot_donor_earmarking works", {
 ```
 
 
-# plot_donor_flowtype
+## plot_donor_flowtype
 
 ```{r function-plot_donor_flowtype}
 #' Plot Donor Flow Type Distribution
@@ -528,16 +513,11 @@ plot_donor_flowtype <- function(flows, donor_name) {
   
 ```{r example-plot_donor_flowtype, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_flowtype(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
 
 ```{r tests-plot_donor_flowtype}
 test_that("plot_donor_flowtype works", {
@@ -546,7 +526,7 @@ test_that("plot_donor_flowtype works", {
 ```
 
 
-# plot_donor_cluster_coverage
+## plot_donor_cluster_coverage
 
 ```{r function-plot_donor_cluster_coverage}
 #' Plot Donor Cluster Coverage
@@ -595,24 +575,20 @@ plot_donor_cluster_coverage <- function(flows, donor_name) {
   
 ```{r example-plot_donor_cluster_coverage, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_donor_cluster_coverage(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_donor_cluster_coverage}
 test_that("plot_donor_cluster_coverage works", {
   expect_true(inherits(plot_donor_cluster_coverage, "function")) 
 })
 ```
 
-# plot_recipient_funding_composition
+# Recipient Plot
+
+## plot_recipient_funding_composition
 
 ```{r function-plot_recipient_funding_composition}
 #' Plot Recipient Funding Composition by Donor
@@ -660,24 +636,18 @@ plot_recipient_funding_composition <- function(flows, recipient_name) {
 ```{r example-plot_recipient_funding_composition, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_funding_composition(flows, 
               recipient_name = "United Nations High Commissioner for Refugees")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_recipient_funding_composition}
 test_that("plot_recipient_funding_composition works", {
   expect_true(inherits(plot_recipient_funding_composition, "function")) 
 })
 ```
 
-# plot_recipient_grandbargain
+## plot_recipient_grandbargain
 
 ```{r function-plot_recipient_grandbargain}
 #' Plot Grand Bargain Earmarking by Recipient
@@ -731,24 +701,18 @@ plot_recipient_grandbargain <- function(flows, recipient_name) {
 ```{r example-plot_recipient_grandbargain, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_grandbargain(flows,
           recipient_name = "United Nations High Commissioner for Refugees")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_recipient_grandbargain}
 test_that("plot_recipient_grandbargain works", {
   expect_true(inherits(plot_recipient_grandbargain, "function")) 
 })
 ```
   
-# plot_recipient_cofunding
+## plot_recipient_cofunding
 
 ```{r function-plot_recipient_cofunding}
 #' Plot Recipient Co-Funding Rate
@@ -798,25 +762,18 @@ plot_recipient_cofunding <- function(flows, recipient_name) {
 ```{r example-plot_recipient_cofunding, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_cofunding(flows, 
               recipient_name = "United Nations High Commissioner for Refugees")
-
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_recipient_cofunding}
 test_that("plot_recipient_cofunding works", {
   expect_true(inherits(plot_recipient_cofunding, "function")) 
 })
 ```
 
-# plot_recipient_contribution_type
+## plot_recipient_contribution_type
 
 ```{r function-plot_recipient_contribution_type}
 #' Plot Recipient Funding by Contribution Type
@@ -864,25 +821,20 @@ plot_recipient_contribution_type <- function(flows, recipient_name) {
 ```{r example-plot_recipient_contribution_type, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_recipient_contribution_type(flows, 
                 recipient_name = "United Nations High Commissioner for Refugees")
-
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_recipient_contribution_type}
 test_that("plot_recipient_contribution_type works", {
   expect_true(inherits(plot_recipient_contribution_type, "function")) 
 })
 ```
 
-# plot_destination_funding_destination
+# Destination Plot
+
+## plot_destination_funding_destination
 
 ```{r function-plot_destination_funding_destination, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 #' Plot Funding by Destination Location
@@ -934,24 +886,18 @@ plot_destination_funding_destination <- function(flows, destination_name) {
   
 ```{r example-plot_destination_funding_destination, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_destination_funding_destination(flows, destination_name= "Burundi")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_destination_funding_destination}
 test_that("plot_destination_funding_destination works", {
   expect_true(inherits(plot_destination_funding_destination, "function")) 
 })
 ```
 
-# plot_destination_funding_donor
+## plot_destination_funding_donor
 
 ```{r function-plot_destination_funding_donor}
 #' Plot Destination Funding by Donor
@@ -1003,24 +949,18 @@ plot_destination_funding_donor <- function(flows, destination_name) {
   
 ```{r example-plot_destination_funding_donor, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_destination_funding_donor(flows, destination_name= "Burundi")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_destination_funding_donor}
 test_that("plot_destination_funding_donor works", {
   expect_true(inherits(plot_destination_funding_donor, "function")) 
 })
 ```
 
-# plot_destination_heatmap
+## plot_destination_heatmap
 
 ```{r function-plot_destination_heatmap}
 #' Plot Top Donors Heatmap
@@ -1157,17 +1097,11 @@ plot_destination_heatmap <- function(flows, destination_name, top_n = 5) {
   
 ```{r example-plot_destination_heatmap, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_destination_heatmap(flows, destination_name= "Burundi", top_n = 5)
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_destination_heatmap}
 test_that("plot_destination_heatmap works", {
   expect_true(inherits(plot_destination_heatmap, "function")) 
@@ -1175,8 +1109,9 @@ test_that("plot_destination_heatmap works", {
 ```
 
 
+# Global Plot
 
-# plot_funding_status_timeline
+## plot_funding_status_timeline
 
 ```{r function-plot_funding_status_timeline}
 #' Plot Funding Timeline by Status
@@ -1217,17 +1152,11 @@ plot_funding_status_timeline <- function(flows) {
   
 ```{r example-plot_funding_status_timeline, fig.retina = 2, fig.width = 8, fig.asp = 0.618, fig.align = "center", out.width = "90%"}
 p <- plot_funding_status_timeline(flows)
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)
 ```
 
-`r story`
-  
 ```{r tests-plot_funding_status_timeline}
 test_that("plot_funding_status_timeline works", {
   expect_true(inherits(plot_funding_status_timeline, "function")) 
@@ -1235,117 +1164,11 @@ test_that("plot_funding_status_timeline works", {
 ```
 
 
-# generate_report
-     
-  
-```{r function-generate_report}
-#' Generate Quarto HTML / PDF Country Factsheets in Batch
-#'
-#' This function renders the 'Country_Factsheet' Quarto template for a list of
-#' countries, generating a report file for each.
-#'
-#' @param type either donor recipient or destination.
-#' @param name name of  donor recipient or destination if NULL batch process them
-#'
-#' @importFrom dplyr filter select pull
-#' @importFrom quarto quarto_render
-#' @importFrom here here
-#'
-#' @return nothing, reports are generated in the specified folder.
-#'
-#' @export
-generate_report <- function(type="donor",
-                            name=NULL) {
-  
-  template_path = system.file(paste0("_extension/", type,"/template.qmd"), 
-                                package = "ftsAnalysis")
-  ## Create the outfolder if it does not exist
-  folder <- "docs/reports"
-  output_dir <- here::here(folder)
-  if (!dir.exists(output_dir)) {
-    dir.create(output_dir, recursive = TRUE)
-    message("Created output directory: ", output_dir)
-  }
-  
-  # Ensure template exists
-  if (!file.exists(template_path)) {
-    stop("Quarto template not found at: ", template_path, 
-         ". Please check the template_path argument.")
-  }
-  
-  flows <- filter_flows_for_indicators(flows)
-  # --- Loop through each country for batch rendering ---
-  if ( is.null(name)){
-    if(type == "donor") {
-      name <- flows |>
-                tidyr::unnest(sourceObjects, names_repair = "unique", names_sep = "_") |>
-                dplyr::filter(sourceObjects_type == "Organization") |>
-                dplyr::pull(sourceObjects_name) |>
-                unlist() |>
-                unique()
-      # dput(names(name))
-      # dput(levles(factor(name$sourceObjects_type))
-    }
-  
-    if(type == "recipient") {
-      name <- flows |>
-                tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
-                dplyr::filter(destinationObjects_type == "Organization") |>
-                dplyr::pull(destinationObjects_name) |>
-                unlist() |>
-                unique()
-    }
-    
-    
-    if(type == "destination") {
-      name <- flows |>
-                tidyr::unnest(destinationObjects, names_repair = "unique", names_sep = "_") |>
-                dplyr::filter(destinationObjects_type == "Location") |>
-                dplyr::pull(destinationObjects_name) |>
-                unlist() |>
-                unique()
-    }
-  } 
-  
-  for ( this in name) {
-    
-    # 2. Define Output Filename and Path
-    output_filename <- paste0('ftsAnalysis-', type, '-', this, '.html')
-    output_filepath <- here::here(folder, output_filename)
-    
-    message("Rendering report for ", name,  "...")
-    
-    # 3. Render the Quarto document
-    tryCatch({
-      quarto::quarto_render(
-        input = template_path,
-        output_file = output_filepath,
-        # Pass parameters to the YAML header and R code chunks
-        execute_params = list(name = this )
-      )
-      message("Successfully generated: ", output_filename)
-    }, error = function(e) {
-      warning("Failed to render report for ", this, ": ", e$message)
-    })
-  }
-}
-```
-  
-```{r example-generate_report}
-#generate_report(type = "donor")
-```
-  
-```{r tests-generate_report}
-test_that("generate_report works", {
-  expect_true(inherits(generate_report, "function")) 
-})
-```
-  
 
 
 ```{r development-inflate, eval=FALSE}
 # Run but keep eval=FALSE to avoid infinite loop
 # Execute in the console directly
-fusen::inflate(flat_file = "dev/flat_dev_5_visualisation.Rmd", vignette_name = "5-Visualisation")
+fusen::inflate(flat_file = "dev/flat_dev_5_visualisation.Rmd", vignette_name = "Doc-5-Visualisation", check = FALSE)
 ```
 

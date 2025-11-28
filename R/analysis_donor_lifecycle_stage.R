@@ -13,51 +13,22 @@
 #' scoped to a specific recipient organization.
 #'
 #' @param flows Dataframe `flows`.
-#' @param alignment_df Optional tibble with donor alignment scores (donor, alignment_score 0-1).
 #' @param recipient_name Character: The name of the recipient organization to filter the flows by.
+#' @param alignment_df Optional tibble with donor alignment scores (donor, alignment_score 0-1).
 #'
-#' @return Tibble with donor, metrics and stage (factor).
+#' @return a list with data, aka a Tibble with donor, metrics and stage (factor)
+#'   and a plot.
 #' @importFrom dplyr select group_by summarise mutate arrange desc left_join n_distinct
 #' @importFrom tidyr unnest
 #' @importFrom stats lm coef
 #' @export
 #' @examples
-#' recipient_name <- "United Nations High Commissioner for Refugees"
-#' stages <- analysis_donor_lifecycle_stage(flows, recipient_name= recipient_name )
-#'
-#' ggplot2::ggplot(stages, ggplot2::aes(x = stage)) +
-#'   ggplot2::geom_bar( ggplot2::aes(fill = stage)) +
-#'   ggplot2::coord_flip() +
-#'   ggplot2::labs(title = paste0("Donor Lifecycle Stages for ", recipient_name),
-#'        subtitle = "Based on their historical funding behavior, complexity 
-#'        of partnership, and alignment",
-#'        x = "",
-#'        y = "Number of Donors",
-#'        caption = paste(
-#'     "Indicator interpretation:",
-#'     "This visualization segments donors into specific **Lifecycle Stages** . 
-#'     This framework helps tailor engagement strategies to maximize potential 
-#'     and retention. The stages represent a progression in the relationship 
-#'     quality and maturity: ", 
-#'     "**Prospect:** High potential alignment, but hasn't provided funding yet 
-#'     (highest priority for first outreach). ", 
-#'     " **New Partner:** Recently started funding (1-2 years), establishing the 
-#'     relationship.",
-#'     " **Growing Partner:** Demonstrates increasing funding trends and engages 
-#'     across multiple sectors (focus on deepening the partnership). ",
-#'     "**Strategic Partner:** Provides multi-year or flexible funding and shows
-#'     high strategic alignment (focus on co-design and long-term goals). ",
-#'     "**Legacy Partner:** Long-term partners (10+ years of funding), 
-#'     foundational to our operations. ",
-#'     "**Maintenance:** Donors that do not fit the criteria for active 
-#'     growth stages (focus on efficient retention).",
-#'     "\n\n",
-#'     
-#'     "**Data Source**: OCHA Financial Tracking Service (FTS) API Data."
-#' )) +
-#'   unhcrthemes::theme_unhcr(grid = "X", axis = "Y", axis_title = TRUE, 
-#'                            legend=FALSE)   
-analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL, recipient_name = NULL) {
+#' result <- analysis_donor_lifecycle_stage(flows, 
+#'              recipient_name= "United Nations High Commissioner for Refugees" )
+#' print(result$plot)
+analysis_donor_lifecycle_stage <- function(flows,
+                                           alignment_df = NULL, 
+                                           recipient_name = NULL) {
   
   flows <- filter_flows_for_indicators(flows)
   # --- 1. Base Unnesting and Filtering ---
@@ -136,5 +107,40 @@ analysis_donor_lifecycle_stage <- function(flows, alignment_df = NULL, recipient
     )
   res$stage <- factor(res$stage, levels = c("Prospect", "New Partner", "Growing Partner", "Strategic Partner", "Legacy Partner", "Maintenance"))
   
-  return(res)
+  plot <- 
+ggplot2::ggplot(res, ggplot2::aes(x = stage)) +
+  ggplot2::geom_bar( ggplot2::aes(fill = stage)) +
+  ggplot2::coord_flip() +
+  ggplot2::labs(title = paste0("Donor Lifecycle Stages | ", recipient_name),
+       subtitle = "Based on their historical funding behavior, complexity 
+       of partnership, and alignment",
+       x = "",
+       y = "Number of Donors",
+       caption = paste(
+    "Indicator interpretation:",
+    "This visualization segments donors into specific **Lifecycle Stages** . 
+    This framework helps tailor engagement strategies to maximize potential 
+    and retention. The stages represent a progression in the relationship 
+    quality and maturity: ", 
+    "**Prospect:** High potential alignment, but hasn't provided funding yet 
+    (highest priority for first outreach). ", 
+    " **New Partner:** Recently started funding (1-2 years), establishing the 
+    relationship.",
+    " **Growing Partner:** Demonstrates increasing funding trends and engages 
+    across multiple sectors (focus on deepening the partnership). ",
+    "**Strategic Partner:** Provides multi-year or flexible funding and shows
+    high strategic alignment (focus on co-design and long-term goals). ",
+    "**Legacy Partner:** Long-term partners (10+ years of funding), 
+    foundational to our operations. ",
+    "**Maintenance:** Donors that do not fit the criteria for active 
+    growth stages (focus on efficient retention).",
+    "\n\n",
+    
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API Data."
+)) +
+  unhcrthemes::theme_unhcr(grid = "X", axis = "Y", axis_title = TRUE, 
+                           legend=FALSE)   
+  
+  result <- list(data = res, plot = plot)
+  return(result)
 }

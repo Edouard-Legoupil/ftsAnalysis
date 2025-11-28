@@ -107,29 +107,25 @@ generate_plot_story <- function(plot,
   geoms_text <- paste(geoms, collapse = ", ")
   
   system_prompt <- paste0(
-    "You are a humanitarian data analysis expert. Your role is to:\n",
-    "1. Extract key humanitarian insights from a dataset and its visualization parameters\n",
-    "2. Create compelling, accessible narratives tailored for an executive audiences\n",
-    "3. Highlight patterns, trends, and implications for humanitarian response\n",
-    "4. Adapt interpretation depth based on available data and context\n",
-    "5. Use clear, plain language with appropriate emotional resonance\n\n",
+    "You are a humanitarian data analysis expert specialised in fundraising. Your role is to: \n",
+    "1. Extract, from a given dataset and its visualization parameters, key fund raising insights with quotable and specific data points \n",
+    "2. Create compelling, accessible narratives tailored for a humanitarian proposal writer audience \n",
+    "3. Highlight patterns, trends, and implications to consider when looking for funding opportunities \n",
+    "4. Adapt interpretation depth based on available data and context \n",
+    "5. Use clear, plain language with appropriate practical recommendations \n\n",
     
     "CRITICAL INSTRUCTIONS:\n",
     "- DO NOT include any thinking tags like <think> or </think> in your response\n",
     "- DO NOT use markdown formatting, asterisks, or special characters\n",
     "- Provide ONLY the final narrative text\n",
-    "- Your response should be clean plain text ready for display\n\n",
+    "- Your response should be clean plain text ready for display\n\n"
     
-    "Response Guidelines:\n",
-    "- Focus on the most significant patterns and their humanitarian relevance\n",
-    "- Suggest potential implications or actions\n",
-    "- Adjust the tone for an executive audience\n",
-    "- Craft a clear narrative arc with a beginning (context/problem), middle (analysis/discovery), and end (insights/implications/call for actions)\n"
   )
   
   # Build enhanced prompt
   prompt <- paste0(
     "VISUALIZATION CONTEXT:\n",
+    "Consider what each mapped variable represents and any data transformations applied.\n\n",
     "Title: ", title, "\n",
     "Subtitle: ", subtitle, "\n", 
     "Caption: ", caption, "\n",
@@ -138,19 +134,17 @@ generate_plot_story <- function(plot,
     "Layer mappings: ", layer_mappings_text, "\n", 
     "Scales: ", scale_info, "\n\n",
     
-    "DATA:\n", paste(plot_data_text, collapse = "\n"), "\n\n",
+    "Use the following DATA:\n", paste(plot_data_text, collapse = "\n"), "\n\n",
     
-    "TASK: Create a humanitarian data story using the provided data and visualization parameters.\n",
-    "Consider what each mapped variable represents and any data transformations applied.\n\n",
+    "TASK: Create a fund raising analysis using the provided data and visualization parameters.\n",
     
     "ADAPTIVE CONSTRAINTS:\n",
     "- Important! Maximum length for the generated output: ", max_tokens, " tokens\n",
     "- Prioritize clarity over completeness\n",
     "- Focus on 2-3 key insights if space is limited\n",
     "- Use concise but impactful language\n",
-    "- IMPORTANT: Provide only clean text output without any thinking tags or markdown\n\n",
+    "- IMPORTANT: Provide only clean text output without any thinking tags or markdown\n\n"
     
-    "What humanitarian story does this data tell, considering the variable mappings and any data transformations?"
   )
   
   # Auto-detect provider if not specified

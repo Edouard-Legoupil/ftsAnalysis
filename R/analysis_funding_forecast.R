@@ -14,41 +14,14 @@
 #' @importFrom forecast auto.arima forecast
 #' @export
 #' @examples
-#' donor <- "Germany"
-#' forecast_result <- analysis_funding_forecast(flows,
-#'                                              by = "donor", 
-#'                                              name = donor)
-#'
-#' ggplot2::autoplot(forecast_result$forecast) +
-#'
-#'   ggplot2::scale_y_continuous(labels = scales::label_number(
-#'     scale_cut = scales::cut_short_scale())) +
-#'   ggplot2::labs(title = paste0("Funding Forecast of monthly funding amounts from ",
-#'   donor),
-#'        subtitle= "Using an Autoregressive Integrated Moving Average time
-#'        series model (ARIMA).",
-#'        x = "Year",
-#'        y = "Funding Amount (USD)",
-#'        caption = paste0(
-#'     "Indicator interpretation:",
-#'     "The **dark line** represents the historical monthly funding data used for
-#'     training the model. The **lighter line** extending to the right shows
-#'     the **future forecast**.",
-#'     "\n\n",
-#'     
-#'     "The **shaded areas** surrounding the forecast line represent 
-#'     the **prediction intervals**: the **darker shade** is the 80% confidence 
-#'     interval, and the **lighter shade** is the 95% confidence interval. 
-#'     These areas indicate the likely range of future funding, showing the
-#'     uncertainty inherent in the forecast: the wider the shade, 
-#'     the less certain the prediction.",
-#'     "\n\n",
-#'     "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
-#'   unhcrthemes::theme_unhcr(grid = TRUE, 
-#'                            axis =  FALSE, 
-#'                            axis_title = FALSE,
-#'                            legend=TRUE)  
-analysis_funding_forecast <- function(flows, by = c("donor", "recipient"), name, h = 12) {
+#' result <- analysis_funding_forecast(flows,
+#'                                      by = "donor", 
+#'                                     name = "Germany")
+#' print(result$plot)
+analysis_funding_forecast <- function(flows, 
+                                      by = c("donor", "recipient"),
+                                      name,
+                                      h = 12) {
   by <- match.arg(by)
   
   # --- 1. Prepare Base Data: Unnest and Rename ---
@@ -124,5 +97,35 @@ analysis_funding_forecast <- function(flows, by = c("donor", "recipient"), name,
   fit <- forecast::auto.arima(ts_vec)
   fcast <- forecast::forecast(fit, h = h)
   
-  return(list(ts = ts_vec, model = fit, forecast = fcast))
+  plot <- ggplot2::autoplot(fcast) +
+
+  ggplot2::scale_y_continuous(labels = scales::label_number(
+    scale_cut = scales::cut_short_scale())) +
+  ggplot2::labs(title = paste0("Monthly Funding Amounts Forecast | ",
+  name),
+       subtitle= "Using an Autoregressive Integrated Moving Average time
+       series model (ARIMA).",
+       x = "Year",
+       y = "Funding Amount (USD)",
+       caption = paste0(
+    "Indicator interpretation:",
+    "The **dark line** represents the historical monthly funding data used for
+    training the model. The **lighter line** extending to the right shows
+    the **future forecast**.",
+    "\n\n",
+    
+    "The **shaded areas** surrounding the forecast line represent 
+    the **prediction intervals**: the **darker shade** is the 80% confidence 
+    interval, and the **lighter shade** is the 95% confidence interval. 
+    These areas indicate the likely range of future funding, showing the
+    uncertainty inherent in the forecast: the wider the shade, 
+    the less certain the prediction.",
+    "\n\n",
+    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
+  unhcrthemes::theme_unhcr(grid = TRUE, 
+                           axis =  FALSE, 
+                           axis_title = FALSE,
+                           legend=TRUE)  
+  result <- list(ts = ts_vec, model = fit, forecast = fcast, plot = plot)
+  return(result)
 }

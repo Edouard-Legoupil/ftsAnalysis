@@ -20,10 +20,11 @@ countries, generating a report file for each."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
-    <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
-    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/ai-powered-reports.html">AI Powered Reports</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-1-data-tidying.html">Doc-1-Data Tidying</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-2-indicators.html">Doc-2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-4-analysis.html">Doc-4-Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-5-visualisation.html">Doc-5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -63,15 +64,336 @@ countries, generating a report file for each.</p>
 <dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
 <dd><p>name of  donor recipient or destination if NULL batch process them</p></dd>
 
+
+<dt id="arg-top-n">top_n<a class="anchor" aria-label="anchor" href="#arg-top-n"></a></dt>
+<dd><p>Top number of report to batch process based on total amount</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>nothing, reports are generated in the specified folder.</p>
+    <p>links to genrated reports.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co">#generate_report(type = "donor")</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># name = c("France, Government of", "Germany, Government of")</span></span></span>
+<span class="r-in"><span><span class="co"># ftsAnalysis::generate_report(type = "donor", name )</span></span></span>
+<span class="r-in"><span><span class="co"># ftsAnalysis::generate_report(type = "donor", name = "Switzerland, Government of")</span></span></span>
+<span class="r-in"><span><span class="co"># linkdonor &lt;- generate_report(type = "donor")</span></span></span>
+<span class="r-in"><span><span class="co"># dput(linkdonor)</span></span></span>
+<span class="r-in"><span><span class="co"># linkrecipient &lt;- generate_report(type = "recipient")</span></span></span>
+<span class="r-in"><span><span class="co"># dput(linkrecipient )</span></span></span>
+<span class="r-in"><span><span class="co"># linkdestination &lt;- generate_report(type = "destination")</span></span></span>
+<span class="r-in"><span><span class="co"># dput(linkdestination)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">linkdonor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"[Profile Report for donor: Algeria, Government of](../docs/reports/ftsAnalysis-donor-algeria-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Armenia, Government of](../docs/reports/ftsAnalysis-donor-armenia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Australia, Government of](../docs/reports/ftsAnalysis-donor-australia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Austria, Government of](../docs/reports/ftsAnalysis-donor-austria-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Azerbaijan, Government of](../docs/reports/ftsAnalysis-donor-azerbaijan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Belgium, Government of](../docs/reports/ftsAnalysis-donor-belgium-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Bhutan, Government of](../docs/reports/ftsAnalysis-donor-bhutan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Brazil, Government of](../docs/reports/ftsAnalysis-donor-brazil-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Brunei Darussalam, Government of](../docs/reports/ftsAnalysis-donor-brunei-darussalam-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Bulgaria, Government of](../docs/reports/ftsAnalysis-donor-bulgaria-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Burkina Faso, Government of](../docs/reports/ftsAnalysis-donor-burkina-faso-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Cambodia, Government of](../docs/reports/ftsAnalysis-donor-cambodia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Canada, Government of](../docs/reports/ftsAnalysis-donor-canada-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Chad, Government of](../docs/reports/ftsAnalysis-donor-chad-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Chile, Government of](../docs/reports/ftsAnalysis-donor-chile-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: China, Government of](../docs/reports/ftsAnalysis-donor-china-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Colombia, Government of](../docs/reports/ftsAnalysis-donor-colombia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Croatia, Government of](../docs/reports/ftsAnalysis-donor-croatia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Cyprus, Government of](../docs/reports/ftsAnalysis-donor-cyprus-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Czech Republic, Government of](../docs/reports/ftsAnalysis-donor-czech-republic-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Danish International Development Agency](../docs/reports/ftsAnalysis-donor-danish-international-development-agency.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Denmark, Government of](../docs/reports/ftsAnalysis-donor-denmark-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Ecuador, Government of](../docs/reports/ftsAnalysis-donor-ecuador-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Education Above All Foundation](../docs/reports/ftsAnalysis-donor-education-above-all-foundation.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Egypt, Government of](../docs/reports/ftsAnalysis-donor-egypt-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Estonia, Government of](../docs/reports/ftsAnalysis-donor-estonia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Finland, Government of](../docs/reports/ftsAnalysis-donor-finland-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: France, Government of](../docs/reports/ftsAnalysis-donor-france-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Germany, Government of](../docs/reports/ftsAnalysis-donor-germany-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Greece, Government of](../docs/reports/ftsAnalysis-donor-greece-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Guyana, Government of](../docs/reports/ftsAnalysis-donor-guyana-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Haiti, Government of](../docs/reports/ftsAnalysis-donor-haiti-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Holy See, Government of](../docs/reports/ftsAnalysis-donor-holy-see-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Honduras, Government of](../docs/reports/ftsAnalysis-donor-honduras-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Iceland, Government of](../docs/reports/ftsAnalysis-donor-iceland-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Indonesia, Government of](../docs/reports/ftsAnalysis-donor-indonesia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Ireland, Government of](../docs/reports/ftsAnalysis-donor-ireland-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Italy, Government of](../docs/reports/ftsAnalysis-donor-italy-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Japan, Government of](../docs/reports/ftsAnalysis-donor-japan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Jersey Overseas Aid](../docs/reports/ftsAnalysis-donor-jersey-overseas-aid.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Jordan, Government of](../docs/reports/ftsAnalysis-donor-jordan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Korea, Republic of, Government of](../docs/reports/ftsAnalysis-donor-korea-republic-of-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Kuwait Fund for Arab Economic Development](../docs/reports/ftsAnalysis-donor-kuwait-fund-for-arab-economic-development.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Kuwait, Government of](../docs/reports/ftsAnalysis-donor-kuwait-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Kyrgyzstan, Government of](../docs/reports/ftsAnalysis-donor-kyrgyzstan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Latvia, Government of](../docs/reports/ftsAnalysis-donor-latvia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Liechtenstein, Government of](../docs/reports/ftsAnalysis-donor-liechtenstein-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Lithuania, Government of](../docs/reports/ftsAnalysis-donor-lithuania-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Luxembourg, Government of](../docs/reports/ftsAnalysis-donor-luxembourg-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Madagascar, Government of](../docs/reports/ftsAnalysis-donor-madagascar-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Malawi, Government of](../docs/reports/ftsAnalysis-donor-malawi-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Malta, Government of](../docs/reports/ftsAnalysis-donor-malta-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Mauritius, Government of](../docs/reports/ftsAnalysis-donor-mauritius-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Monaco, Government of](../docs/reports/ftsAnalysis-donor-monaco-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Mongolia, Government of](../docs/reports/ftsAnalysis-donor-mongolia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Montenegro, Government of](../docs/reports/ftsAnalysis-donor-montenegro-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Morocco, Government of](../docs/reports/ftsAnalysis-donor-morocco-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Mozambique, Government of](../docs/reports/ftsAnalysis-donor-mozambique-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Nepal, Government of](../docs/reports/ftsAnalysis-donor-nepal-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Netherlands, Government of](../docs/reports/ftsAnalysis-donor-netherlands-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: New Zealand, Government of](../docs/reports/ftsAnalysis-donor-new-zealand-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Nigeria, Government of](../docs/reports/ftsAnalysis-donor-nigeria-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Norway, Government of](../docs/reports/ftsAnalysis-donor-norway-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Oman, Government of](../docs/reports/ftsAnalysis-donor-oman-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Palestinian territory, occupied](../docs/reports/ftsAnalysis-donor-palestinian-territory-occupied.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Peru, Government of](../docs/reports/ftsAnalysis-donor-peru-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Philippines, Government of](../docs/reports/ftsAnalysis-donor-philippines-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Poland, Government of](../docs/reports/ftsAnalysis-donor-poland-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Portugal, Government of](../docs/reports/ftsAnalysis-donor-portugal-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Qatar Airways](../docs/reports/ftsAnalysis-donor-qatar-airways.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Qatar Fund for Development](../docs/reports/ftsAnalysis-donor-qatar-fund-for-development.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Qatar, Government of](../docs/reports/ftsAnalysis-donor-qatar-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Russian Federation, Government of](../docs/reports/ftsAnalysis-donor-russian-federation-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: San Marino, Government of](../docs/reports/ftsAnalysis-donor-san-marino-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Saudi Arabia (Kingdom of), Government of](../docs/reports/ftsAnalysis-donor-saudi-arabia-kingdom-of-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Singapore, Government of](../docs/reports/ftsAnalysis-donor-singapore-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Slovenia, Government of](../docs/reports/ftsAnalysis-donor-slovenia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Somalia, Government of](../docs/reports/ftsAnalysis-donor-somalia-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Spain, Government of](../docs/reports/ftsAnalysis-donor-spain-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Sudan, Government of](../docs/reports/ftsAnalysis-donor-sudan-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Sweden, Government of](../docs/reports/ftsAnalysis-donor-sweden-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Switzerland, Government of](../docs/reports/ftsAnalysis-donor-switzerland-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Tanzania, Government of](../docs/reports/ftsAnalysis-donor-tanzania-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Thailand, Government of](../docs/reports/ftsAnalysis-donor-thailand-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Türkiye, Government of](../docs/reports/ftsAnalysis-donor-turkiye-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Uganda, Government of](../docs/reports/ftsAnalysis-donor-uganda-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Ukraine, Government of](../docs/reports/ftsAnalysis-donor-ukraine-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: United Arab Emirates, Government of](../docs/reports/ftsAnalysis-donor-united-arab-emirates-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: United Kingdom, Government of](../docs/reports/ftsAnalysis-donor-united-kingdom-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: United States Department of State](../docs/reports/ftsAnalysis-donor-united-states-department-of-state.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: United States of America, Government of](../docs/reports/ftsAnalysis-donor-united-states-of-america-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Viet Nam, Government of](../docs/reports/ftsAnalysis-donor-viet-nam-government-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for donor: Zimbabwe, Government of](../docs/reports/ftsAnalysis-donor-zimbabwe-government-of.html)"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">linkrecipient</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"[Profile Report for recipient: Food and Agriculture Organization of the United Nations](../docs/reports/ftsAnalysis-recipient-food-and-agriculture-organization-of-the-united-nations.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: International Labour Organization](../docs/reports/ftsAnalysis-recipient-international-labour-organization.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: International Organization for Migration](../docs/reports/ftsAnalysis-recipient-international-organization-for-migration.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: International Trade Center](../docs/reports/ftsAnalysis-recipient-international-trade-center.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Multi-donor flexible humanitarian contribution (UNICEF Global Humanitarian Thematic)](../docs/reports/ftsAnalysis-recipient-multi-donor-flexible-humanitarian-contribution-unicef-global-humanitarian-thematic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Multi-donor flexible humanitarian contribution (UNICEF Regional Humanitarian Thematic)](../docs/reports/ftsAnalysis-recipient-multi-donor-flexible-humanitarian-contribution-unicef-regional-humanitarian-thematic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Office for the Coordination of Humanitarian Affairs](../docs/reports/ftsAnalysis-recipient-office-for-the-coordination-of-humanitarian-affairs.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Office of the High Commissioner for Human Rights](../docs/reports/ftsAnalysis-recipient-office-of-the-high-commissioner-for-human-rights.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Pan-American Health Organization (World Health Organization)](../docs/reports/ftsAnalysis-recipient-pan-american-health-organization-world-health-organization.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: Specially Designated Contributions (OCHA)](../docs/reports/ftsAnalysis-recipient-specially-designated-contributions-ocha.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: UN Action Against Sexual Violence in Conflict](../docs/reports/ftsAnalysis-recipient-un-action-against-sexual-violence-in-conflict.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: UN Agencies (Confidential)](../docs/reports/ftsAnalysis-recipient-un-agencies-confidential.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: UN Office for Disaster Risk Reduction](../docs/reports/ftsAnalysis-recipient-un-office-for-disaster-risk-reduction.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: UN Women](../docs/reports/ftsAnalysis-recipient-un-women.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: UNDP for UNDSS](../docs/reports/ftsAnalysis-recipient-undp-for-undss.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations](../docs/reports/ftsAnalysis-recipient-united-nations.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Capital Development Fund](../docs/reports/ftsAnalysis-recipient-united-nations-capital-development-fund.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Children and Armed Conflict (Office of the Special Representative)](../docs/reports/ftsAnalysis-recipient-united-nations-children-and-armed-conflict-office-of-the-special-representative.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Children's Fund](../docs/reports/ftsAnalysis-recipient-united-nations-childrens-fund.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Department of Safety and Security](../docs/reports/ftsAnalysis-recipient-united-nations-department-of-safety-and-security.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Development Programme](../docs/reports/ftsAnalysis-recipient-united-nations-development-programme.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Disaster Assessment and Coordination](../docs/reports/ftsAnalysis-recipient-united-nations-disaster-assessment-and-coordination.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Economic and Social Commission for Asia and the Pacific](../docs/reports/ftsAnalysis-recipient-united-nations-economic-and-social-commission-for-asia-and-the-pacific.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Educational, Scientific and Cultural Organization](../docs/reports/ftsAnalysis-recipient-united-nations-educational-scientific-and-cultural-organization.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Environment Programme](../docs/reports/ftsAnalysis-recipient-united-nations-environment-programme.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations High Commissioner for Refugees](../docs/reports/ftsAnalysis-recipient-united-nations-high-commissioner-for-refugees.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Human Settlements Programme (UN-HABITAT)](../docs/reports/ftsAnalysis-recipient-united-nations-human-settlements-programme-un-habitat.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Humanitarian Response Depot](../docs/reports/ftsAnalysis-recipient-united-nations-humanitarian-response-depot.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Industrial Development Organization](../docs/reports/ftsAnalysis-recipient-united-nations-industrial-development-organization.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Institute for Disarmament Research](../docs/reports/ftsAnalysis-recipient-united-nations-institute-for-disarmament-research.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Institute for Training and Research](../docs/reports/ftsAnalysis-recipient-united-nations-institute-for-training-and-research.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Joint Programme on HIV/AIDS](../docs/reports/ftsAnalysis-recipient-united-nations-joint-programme-on-hivaids.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Mine Action Service](../docs/reports/ftsAnalysis-recipient-united-nations-mine-action-service.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Office for Project Services](../docs/reports/ftsAnalysis-recipient-united-nations-office-for-project-services.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Office on Drugs and Crime](../docs/reports/ftsAnalysis-recipient-united-nations-office-on-drugs-and-crime.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Population Fund](../docs/reports/ftsAnalysis-recipient-united-nations-population-fund.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Relief and Works Agency for Palestine Refugees in the Near East](../docs/reports/ftsAnalysis-recipient-united-nations-relief-and-works-agency-for-palestine-refugees-in-the-near-east.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: United Nations Voluntary Fund for Victims of Torture](../docs/reports/ftsAnalysis-recipient-united-nations-voluntary-fund-for-victims-of-torture.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: World Food Programme](../docs/reports/ftsAnalysis-recipient-world-food-programme.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for recipient: World Health Organization](../docs/reports/ftsAnalysis-recipient-world-health-organization.html)"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">linkdestination</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"[Profile Report for destination: Afghanistan](../docs/reports/ftsAnalysis-destination-afghanistan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Albania](../docs/reports/ftsAnalysis-destination-albania.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Algeria](../docs/reports/ftsAnalysis-destination-algeria.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Angola](../docs/reports/ftsAnalysis-destination-angola.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Anguilla (United Kingdom)](../docs/reports/ftsAnalysis-destination-anguilla-united-kingdom.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Argentina](../docs/reports/ftsAnalysis-destination-argentina.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Armenia](../docs/reports/ftsAnalysis-destination-armenia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Aruba (Netherlands)](../docs/reports/ftsAnalysis-destination-aruba-netherlands.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Australia](../docs/reports/ftsAnalysis-destination-australia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Azerbaijan](../docs/reports/ftsAnalysis-destination-azerbaijan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Bangladesh](../docs/reports/ftsAnalysis-destination-bangladesh.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Belize](../docs/reports/ftsAnalysis-destination-belize.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Benin](../docs/reports/ftsAnalysis-destination-benin.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Bolivia, Plurinational State of](../docs/reports/ftsAnalysis-destination-bolivia-plurinational-state-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Bosnia and Herzegovina](../docs/reports/ftsAnalysis-destination-bosnia-and-herzegovina.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Botswana](../docs/reports/ftsAnalysis-destination-botswana.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Brazil](../docs/reports/ftsAnalysis-destination-brazil.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Brunei Darussalam](../docs/reports/ftsAnalysis-destination-brunei-darussalam.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Bulgaria](../docs/reports/ftsAnalysis-destination-bulgaria.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Burkina Faso](../docs/reports/ftsAnalysis-destination-burkina-faso.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Burundi](../docs/reports/ftsAnalysis-destination-burundi.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Cambodia](../docs/reports/ftsAnalysis-destination-cambodia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Cameroon](../docs/reports/ftsAnalysis-destination-cameroon.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Cape Verde](../docs/reports/ftsAnalysis-destination-cape-verde.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Central African Republic](../docs/reports/ftsAnalysis-destination-central-african-republic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Chad](../docs/reports/ftsAnalysis-destination-chad.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Chile](../docs/reports/ftsAnalysis-destination-chile.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: China](../docs/reports/ftsAnalysis-destination-china.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Colombia](../docs/reports/ftsAnalysis-destination-colombia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Comoros](../docs/reports/ftsAnalysis-destination-comoros.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Congo](../docs/reports/ftsAnalysis-destination-congo.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Cook Islands](../docs/reports/ftsAnalysis-destination-cook-islands.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Costa Rica](../docs/reports/ftsAnalysis-destination-costa-rica.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Côte d'Ivoire](../docs/reports/ftsAnalysis-destination-cote-divoire.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Cuba](../docs/reports/ftsAnalysis-destination-cuba.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Czech Republic](../docs/reports/ftsAnalysis-destination-czech-republic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Democratic Republic of the Congo](../docs/reports/ftsAnalysis-destination-democratic-republic-of-the-congo.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Denmark](../docs/reports/ftsAnalysis-destination-denmark.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Djibouti](../docs/reports/ftsAnalysis-destination-djibouti.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Dominican Republic](../docs/reports/ftsAnalysis-destination-dominican-republic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Ecuador](../docs/reports/ftsAnalysis-destination-ecuador.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Egypt](../docs/reports/ftsAnalysis-destination-egypt.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: El Salvador](../docs/reports/ftsAnalysis-destination-el-salvador.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Equatorial Guinea](../docs/reports/ftsAnalysis-destination-equatorial-guinea.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Eritrea](../docs/reports/ftsAnalysis-destination-eritrea.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Eswatini](../docs/reports/ftsAnalysis-destination-eswatini.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Ethiopia](../docs/reports/ftsAnalysis-destination-ethiopia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Fiji](../docs/reports/ftsAnalysis-destination-fiji.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: France](../docs/reports/ftsAnalysis-destination-france.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Gabon](../docs/reports/ftsAnalysis-destination-gabon.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Gambia](../docs/reports/ftsAnalysis-destination-gambia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Georgia](../docs/reports/ftsAnalysis-destination-georgia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Ghana](../docs/reports/ftsAnalysis-destination-ghana.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Global](../docs/reports/ftsAnalysis-destination-global.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Greece](../docs/reports/ftsAnalysis-destination-greece.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Grenada](../docs/reports/ftsAnalysis-destination-grenada.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Guatemala](../docs/reports/ftsAnalysis-destination-guatemala.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Guinea](../docs/reports/ftsAnalysis-destination-guinea.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Guinea-Bissau](../docs/reports/ftsAnalysis-destination-guinea-bissau.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Guyana](../docs/reports/ftsAnalysis-destination-guyana.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Haiti](../docs/reports/ftsAnalysis-destination-haiti.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Honduras](../docs/reports/ftsAnalysis-destination-honduras.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Hungary](../docs/reports/ftsAnalysis-destination-hungary.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: India](../docs/reports/ftsAnalysis-destination-india.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Indonesia](../docs/reports/ftsAnalysis-destination-indonesia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Iran, Islamic Republic of](../docs/reports/ftsAnalysis-destination-iran-islamic-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Iraq](../docs/reports/ftsAnalysis-destination-iraq.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Israel](../docs/reports/ftsAnalysis-destination-israel.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Italy](../docs/reports/ftsAnalysis-destination-italy.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Jamaica](../docs/reports/ftsAnalysis-destination-jamaica.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Jordan](../docs/reports/ftsAnalysis-destination-jordan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Kazakhstan](../docs/reports/ftsAnalysis-destination-kazakhstan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Kenya](../docs/reports/ftsAnalysis-destination-kenya.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Kiribati](../docs/reports/ftsAnalysis-destination-kiribati.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Korea, Democratic People's Republic of](../docs/reports/ftsAnalysis-destination-korea-democratic-peoples-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Kuwait](../docs/reports/ftsAnalysis-destination-kuwait.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Kyrgyzstan](../docs/reports/ftsAnalysis-destination-kyrgyzstan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Lao People's Democratic Republic](../docs/reports/ftsAnalysis-destination-lao-peoples-democratic-republic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Lebanon](../docs/reports/ftsAnalysis-destination-lebanon.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Lesotho](../docs/reports/ftsAnalysis-destination-lesotho.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Liberia](../docs/reports/ftsAnalysis-destination-liberia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Libya](../docs/reports/ftsAnalysis-destination-libya.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Madagascar](../docs/reports/ftsAnalysis-destination-madagascar.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Malawi](../docs/reports/ftsAnalysis-destination-malawi.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Malaysia](../docs/reports/ftsAnalysis-destination-malaysia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Maldives](../docs/reports/ftsAnalysis-destination-maldives.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mali](../docs/reports/ftsAnalysis-destination-mali.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Marshall Islands](../docs/reports/ftsAnalysis-destination-marshall-islands.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mauritania](../docs/reports/ftsAnalysis-destination-mauritania.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mauritius](../docs/reports/ftsAnalysis-destination-mauritius.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mexico](../docs/reports/ftsAnalysis-destination-mexico.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Micronesia, Federated States of](../docs/reports/ftsAnalysis-destination-micronesia-federated-states-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Moldova, Republic of](../docs/reports/ftsAnalysis-destination-moldova-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mongolia](../docs/reports/ftsAnalysis-destination-mongolia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Montenegro](../docs/reports/ftsAnalysis-destination-montenegro.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Morocco](../docs/reports/ftsAnalysis-destination-morocco.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Mozambique](../docs/reports/ftsAnalysis-destination-mozambique.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Myanmar](../docs/reports/ftsAnalysis-destination-myanmar.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Namibia](../docs/reports/ftsAnalysis-destination-namibia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Nepal](../docs/reports/ftsAnalysis-destination-nepal.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Netherlands Antilles](../docs/reports/ftsAnalysis-destination-netherlands-antilles.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: New Zealand](../docs/reports/ftsAnalysis-destination-new-zealand.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Nicaragua](../docs/reports/ftsAnalysis-destination-nicaragua.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Niger](../docs/reports/ftsAnalysis-destination-niger.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Nigeria](../docs/reports/ftsAnalysis-destination-nigeria.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Niue](../docs/reports/ftsAnalysis-destination-niue.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: North Macedonia, Republic of](../docs/reports/ftsAnalysis-destination-north-macedonia-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Norway](../docs/reports/ftsAnalysis-destination-norway.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Occupied Palestinian Territory](../docs/reports/ftsAnalysis-destination-occupied-palestinian-territory.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Oman](../docs/reports/ftsAnalysis-destination-oman.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Pakistan](../docs/reports/ftsAnalysis-destination-pakistan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Palau](../docs/reports/ftsAnalysis-destination-palau.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Panama](../docs/reports/ftsAnalysis-destination-panama.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Papua New Guinea](../docs/reports/ftsAnalysis-destination-papua-new-guinea.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Paraguay](../docs/reports/ftsAnalysis-destination-paraguay.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Peru](../docs/reports/ftsAnalysis-destination-peru.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Philippines](../docs/reports/ftsAnalysis-destination-philippines.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Poland](../docs/reports/ftsAnalysis-destination-poland.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Qatar](../docs/reports/ftsAnalysis-destination-qatar.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - Asia and the Pacific](../docs/reports/ftsAnalysis-destination-region-asia-and-the-pacific.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - Europe](../docs/reports/ftsAnalysis-destination-region-europe.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - Latin America and the Caribbean](../docs/reports/ftsAnalysis-destination-region-latin-america-and-the-caribbean.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - Middle East and Northern Africa](../docs/reports/ftsAnalysis-destination-region-middle-east-and-northern-africa.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - Southern and Eastern Africa](../docs/reports/ftsAnalysis-destination-region-southern-and-eastern-africa.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Region - West and Central Africa](../docs/reports/ftsAnalysis-destination-region-west-and-central-africa.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Romania](../docs/reports/ftsAnalysis-destination-romania.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Russian Federation](../docs/reports/ftsAnalysis-destination-russian-federation.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Rwanda](../docs/reports/ftsAnalysis-destination-rwanda.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Saint Lucia](../docs/reports/ftsAnalysis-destination-saint-lucia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Saint Vincent and the Grenadines](../docs/reports/ftsAnalysis-destination-saint-vincent-and-the-grenadines.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Samoa](../docs/reports/ftsAnalysis-destination-samoa.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Senegal](../docs/reports/ftsAnalysis-destination-senegal.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Serbia](../docs/reports/ftsAnalysis-destination-serbia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Seychelles](../docs/reports/ftsAnalysis-destination-seychelles.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Sierra Leone](../docs/reports/ftsAnalysis-destination-sierra-leone.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Singapore](../docs/reports/ftsAnalysis-destination-singapore.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Slovakia](../docs/reports/ftsAnalysis-destination-slovakia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Solomon Islands](../docs/reports/ftsAnalysis-destination-solomon-islands.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Somalia](../docs/reports/ftsAnalysis-destination-somalia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: South Africa](../docs/reports/ftsAnalysis-destination-south-africa.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: South Sudan](../docs/reports/ftsAnalysis-destination-south-sudan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Spain](../docs/reports/ftsAnalysis-destination-spain.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Sri Lanka](../docs/reports/ftsAnalysis-destination-sri-lanka.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Sudan](../docs/reports/ftsAnalysis-destination-sudan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Suriname](../docs/reports/ftsAnalysis-destination-suriname.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Switzerland](../docs/reports/ftsAnalysis-destination-switzerland.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Syrian Arab Republic](../docs/reports/ftsAnalysis-destination-syrian-arab-republic.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Tajikistan](../docs/reports/ftsAnalysis-destination-tajikistan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Tanzania, United Republic of](../docs/reports/ftsAnalysis-destination-tanzania-united-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Thailand](../docs/reports/ftsAnalysis-destination-thailand.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Timor-Leste](../docs/reports/ftsAnalysis-destination-timor-leste.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Togo](../docs/reports/ftsAnalysis-destination-togo.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Tonga](../docs/reports/ftsAnalysis-destination-tonga.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Trinidad and Tobago](../docs/reports/ftsAnalysis-destination-trinidad-and-tobago.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Tunisia](../docs/reports/ftsAnalysis-destination-tunisia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Türkiye](../docs/reports/ftsAnalysis-destination-turkiye.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Turkmenistan](../docs/reports/ftsAnalysis-destination-turkmenistan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Uganda](../docs/reports/ftsAnalysis-destination-uganda.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Ukraine](../docs/reports/ftsAnalysis-destination-ukraine.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: United Arab Emirates](../docs/reports/ftsAnalysis-destination-united-arab-emirates.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: United Kingdom](../docs/reports/ftsAnalysis-destination-united-kingdom.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: United States](../docs/reports/ftsAnalysis-destination-united-states.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Uruguay](../docs/reports/ftsAnalysis-destination-uruguay.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Uzbekistan](../docs/reports/ftsAnalysis-destination-uzbekistan.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Vanuatu](../docs/reports/ftsAnalysis-destination-vanuatu.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Venezuela, Bolivarian Republic of](../docs/reports/ftsAnalysis-destination-venezuela-bolivarian-republic-of.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Viet Nam](../docs/reports/ftsAnalysis-destination-viet-nam.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Yemen](../docs/reports/ftsAnalysis-destination-yemen.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Zambia](../docs/reports/ftsAnalysis-destination-zambia.html)"</span>, </span></span>
+<span class="r-in"><span><span class="st">"[Profile Report for destination: Zimbabwe](../docs/reports/ftsAnalysis-destination-zimbabwe.html)"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

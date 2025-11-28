@@ -18,10 +18,6 @@ across budget years. Useful for tracking donor disbursement progress.
 }
 \examples{
 p <- plot_funding_status_timeline(flows)
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)

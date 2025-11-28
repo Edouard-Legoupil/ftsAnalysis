@@ -20,41 +20,16 @@
 #' @importFrom tidyr unnest
 #' @export
 #' @examples
-#' recipient_name <- "United Nations High Commissioner for Refugees"
-#'
-#' matrix_data <- analysis_competitive_intel_matrix(flows,
-#'                                               recipient_name,
-#'                                               peers = NULL)
-#' ggplot2::ggplot(matrix_data, ggplot2::aes(x = market_share, 
-#'                                           y = growth_differential)) +
-#'   ggplot2::geom_point(
-#'     ggplot2::aes(size = our_funding, color = sector), alpha = 0.7) +
-#'   ggplot2::geom_text(
-#'     ggplot2::aes(label = sector),
-#'             vjust = 1,
-#'             hjust = 1,
-#'             size = 3) +
-#'   ggplot2::scale_y_continuous(labels = scales::label_number(
-#'     scale_cut = scales::cut_short_scale())) +
-#'   ggplot2::scale_x_continuous(labels = scales::label_number(
-#'     scale_cut = scales::cut_short_scale())) +
-#'   ggplot2::labs(
-#'     title = "Competitive Intelligence Matrix",
-#'     x = "Market Share",
-#'     y = "Growth Differential",
-#'     size = "Our Funding",
-#'     caption ="**Data Source**: OCHA Financial Tracking Service (FTS) API.") +
-#'   unhcrthemes::theme_unhcr(
-#'     grid = FALSE,
-#'     axis =  FALSE,
-#'     axis_title = FALSE,
-#'     legend = TRUE
-#'   )  
+#' result <- analysis_competitive_intel_matrix(flows,
+#'                recipient_name = "United Nations High Commissioner for Refugees",
+#'                 peers = NULL)
+#' print(result$plot)
 analysis_competitive_intel_matrix <- function(flows,
                                               recipient_name,
                                               peers = NULL) {
   
   flows <- filter_flows_for_indicators(flows)
+
   df <- flows |>
     dplyr::mutate(originaldestinationObjects = destinationObjects,
                   originalsourceObjects = sourceObjects) |>
@@ -176,5 +151,33 @@ analysis_competitive_intel_matrix <- function(flows,
       Competitive_Position = market_share + growth_differential + funding_diversity - (peer_encroachment / (length(core_sectors) + 1))
     )
   
-  return(market)
+  plot <- ggplot2::ggplot(market,
+                          ggplot2::aes(x = market_share, y = growth_differential)) +
+    ggplot2::geom_point(ggplot2::aes(size = our_funding, color = sector), alpha = 0.7) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = sector),
+      vjust = 1,
+      hjust = 1,
+      size = 3
+    ) +
+    ggplot2::scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+    ggplot2::scale_x_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+    ggplot2::labs(
+      title = "Competitive Intelligence Matrix",
+      x = "Market Share",
+      y = "Growth Differential",
+      size = "Our Funding",
+      caption = "**Data Source**: OCHA Financial Tracking Service (FTS) API."
+    ) +
+    unhcrthemes::theme_unhcr(
+      grid = FALSE,
+      axis =  FALSE,
+      axis_title = FALSE,
+      legend = TRUE
+    )  
+  
+  result <- list( data = market, 
+                  plot = plot)
+  
+  return(result)
 }

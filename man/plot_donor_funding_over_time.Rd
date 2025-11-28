@@ -20,10 +20,6 @@ Useful to track trends, identify peaks, and assess consistency.
 }
 \examples{
 p <- plot_donor_funding_over_time(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-#cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 print(p + ggplot2::labs(subtitle = dubbed))

@@ -21,10 +21,6 @@ for a selected donor. Useful for understanding donor engagement complexity.
 }
 \examples{
 p <- plot_donor_flowtype(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)

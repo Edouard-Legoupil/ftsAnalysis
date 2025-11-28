@@ -22,10 +22,6 @@ Useful for assessing donor diversification and reliance.
 \examples{
 p <- plot_recipient_funding_composition(flows, 
               recipient_name = "United Nations High Commissioner for Refugees")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)

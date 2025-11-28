@@ -28,10 +28,6 @@ A ggplot object showing donor funding coverage across clusters.
 
 ``` r
 p <- plot_donor_cluster_coverage(flows, donor_name= "Spain, Government of")
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)

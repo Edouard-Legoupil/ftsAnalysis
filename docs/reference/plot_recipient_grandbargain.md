@@ -31,10 +31,6 @@ p <- plot_recipient_grandbargain(flows,
           recipient_name = "United Nations High Commissioner for Refugees")
 #> Scale for y is already present.
 #> Adding another scale for y, which will replace the existing scale.
-
-# getting LLm story
-story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
-# cat(story)
 # and plot with more powerful subtitle
 dubbed <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini")
 p + ggplot2::labs(subtitle = dubbed)

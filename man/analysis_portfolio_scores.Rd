@@ -17,8 +17,9 @@ donors for (match exactly).}
 (default NULL = all).}
 }
 \value{
-Tibble with columns: donor, donor_engagement, funding_amount,
-donor_concentration_risk, strategic_alignment, Portfolio_Score
+a list with data, aka Tibble with columns: donor, donor_engagement,
+funding_amount, donor_concentration_risk, strategic_alignment, Portfolio_Score
+and plot
 }
 \description{
 Computes a portfolio score for each donor relative to a given recipient
@@ -42,7 +43,7 @@ GlobalCluster (0-1) - best-effort derived
 
 Assumptions & notes:
 \itemize{
-\item \code{recipient} is matched against \code{destinationObjects.name}
+\item \code{recipient_name} is matched against \code{destinationObjects.name}
 (destination type "Location" or "Organization" or "Plan").
 \item strategic alignment is computed by comparing GlobalCluster names present in
 destinationObjects for the recipient vs donor.
@@ -50,46 +51,10 @@ destinationObjects for the recipient vs donor.
 }
 }
 \examples{
-scores <- analysis_portfolio_scores(flows, 
+result <- analysis_portfolio_scores(flows, 
                recipient_name="United Nations High Commissioner for Refugees", 
                           top_n = 10)
 
-ggplot2::ggplot(scores, ggplot2::aes(x = reorder(donor, Portfolio_Score), 
-                                     y = Portfolio_Score)) +
-  ggplot2::geom_col( ggplot2::aes(fill = Portfolio_Score)) +
-  ggplot2::coord_flip() +
-  ggplot2::labs(title = "Donor Portfolio Scores for UNHCR", 
-       subtitle = "Measure of the combined quality, consistency, and strategic 
-       alignment of a donor's funding relationship",
-       x = "Donor", y = "Portfolio Score",
-       caption = paste(
-    "Indicator interpretation:",
-    "The **Portfolio Score**  is calculated as: **Donor Engagement** $\\\\times$ 
-    **Funding Amount** $\\\\times$ (1 - **Donor Concentration Risk**) $\\\\times$ 
-    **Strategic Alignment**. A higher score indicates a more valuable and 
-    reliable funding partner for the recipient.",
-    "\n\n",
-    
-    " The total bar 
-    length represents the Portfolio Score, which is driven by four components: 
-    **Donor Engagement** (consistency of giving over time), **Funding Amount** 
-    (total USD provided), **Donor Concentration Risk** (inverse of funding 
-    diversification across all destinations), and **Strategic Alignment** 
-    (share of donor funding aligned with the recipient's primary Global 
-    Clusters).",
-    "\n\n",
-    
-    "Humanitarian relevance:",
-    "Identifies key and potentially most reliable donors whose funding 
-    relationship is both substantial and strategically aligned with the
-    recipient's mandate. It helps the recipient organization prioritize 
-    relationship management and provides donors with a metric to assess the
-    quality of their long-term partnerships.", 
-    "\n\n",
-    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
-    ggplot2::scale_y_continuous(
-      labels = scales::label_number(scale_cut = scales::cut_short_scale())
-    ) +
-  unhcrthemes::theme_unhcr(grid = "X", axis =  "Y", axis_title = FALSE,
-                           legend=FALSE)  
+print(result$plot)
+
 }

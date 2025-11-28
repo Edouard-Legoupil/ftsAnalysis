@@ -82,7 +82,7 @@ p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
         caption = "Source: mtcars dataset")
 
 generate_plot_story(p, provider = "ollama", model = "deepseek-r1")
-#> [1] "This chart shows a clear trend in fuel efficiency and vehicle weight. Lighter cars generally achieve higher fuel economy, measured here by miles per gallon (MPG). There's a strong inverse relationship between the two variables: lower vehicle weight correlates strongly with better fuel consumption performance. Heavy vehicles consume more fuel than is typical for their size."
+#> [1] "Heavier cars generally get worse gas mileage."
 
 story <- generate_plot_story(p, provider = "azure", model = "gpt-4.1-mini", max_tokens = 300)
 # To use as subtitle:

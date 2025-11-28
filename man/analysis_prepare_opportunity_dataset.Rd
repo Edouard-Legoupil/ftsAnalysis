@@ -40,41 +40,9 @@ crisis_keywords = c("refugees", "refugee","displacement", "displaced",
                          "returnees","idps",
                         "protection", "conflict", "vulnerable")
 
-features <- analysis_prepare_opportunity_dataset( flows,
+result <- analysis_prepare_opportunity_dataset( flows,
     lookback_years = 3,
     crisis_keywords = crisis_keywords)
-
-# Filter for non-NA growth, arrange by descending growth, and take the top 5.
-label_data_top <- features |>
-  dplyr::filter(!is.na(pct_growth)) |>
-  dplyr::arrange(dplyr::desc(pct_growth)) |>
-  dplyr::slice_head(n = 3) |>
-  dplyr::mutate(donor_wrapped = stringr::str_wrap(paste0(donor, " --> ",
-                                                  recipient),
-                                           width = 45))
-
-
-ggplot2::ggplot(features, ggplot2::aes(x = total_amount, y = pct_growth/100)) +
-  ggplot2::geom_point(alpha = 0.5) +
-  ggrepel::geom_text_repel(  data = label_data_top, 
-                             ggplot2::aes(label = donor_wrapped), 
-    size = 2.5, segment.color = 'grey50', 
-    min.segment.length = 0, box.padding = 0.5 ) +
-  ggplot2::scale_x_log10(
-      labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
-  ggplot2::scale_y_continuous(labels = scales::label_percent()  ) +
-  ggplot2::labs(
-    title = "Funding Opportunity Analysis: Amount vs. Growth",
-    subtitle = paste0(
-            "Focusing on the following keywords within project description: ",
-            paste(crisis_keywords, collapse = ", ")
-        ),
-    x = "Total Amount (log scale)",
-    y = "Percentage Growth",
-    caption= paste0(
-      "Indicator interpretation: Points in the top-right quadrant indicate 
-      high-value future opportunities.", "\n\n",
-    "**Data Source**: OCHA Financial Tracking Service (FTS) API.")) +
-  unhcrthemes::theme_unhcr(grid = TRUE, axis = TRUE, 
-                           axis_title = TRUE, legend = TRUE)  
+print(result$plot)
+  
 }

@@ -31,9 +31,9 @@
 #' yearly_clouds <- analysis_wordcloud_from_flows(flows, facet_by_year = TRUE)
 #'
 #' # To view the cloud for a specific year  
-#' yearly_clouds[["2015"]]
-#' yearly_clouds[["2024"]]
-#' yearly_clouds[["2025"]]
+#' print(yearly_clouds[["2015"]])
+#' print(yearly_clouds[["2024"]])
+#' print(yearly_clouds[["2025"]])
 analysis_wordcloud_from_flows <- function(
     flows,
     facet_by_year = FALSE,

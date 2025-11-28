@@ -22,10 +22,11 @@ a large or small language model from a supported provider."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/1-data-tidying.html">1-Data Tidying</a></li>
-    <li><a class="dropdown-item" href="../articles/2-indicators.html">2-Indicators</a></li>
-    <li><a class="dropdown-item" href="../articles/4-analysis.html">4-Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/5-visualisation.html">5-Visualisation</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/ai-powered-reports.html">AI Powered Reports</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-1-data-tidying.html">Doc-1-Data Tidying</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-2-indicators.html">Doc-2-Indicators</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-4-analysis.html">Doc-4-Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/doc-5-visualisation.html">Doc-5-Visualisation</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -124,7 +125,7 @@ calling <code><a href="https://usethis.r-lib.org/reference/edit.html" class="ext
 <span class="r-in"><span>        caption <span class="op">=</span> <span class="st">"Source: mtcars dataset"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">generate_plot_story</span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"ollama"</span>, model <span class="op">=</span> <span class="st">"deepseek-r1"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "This chart shows a clear trend in fuel efficiency and vehicle weight. Lighter cars generally achieve higher fuel economy, measured here by miles per gallon (MPG). There's a strong inverse relationship between the two variables: lower vehicle weight correlates strongly with better fuel consumption performance. Heavy vehicles consume more fuel than is typical for their size."</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Heavier cars generally get worse gas mileage."</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">story</span> <span class="op">&lt;-</span> <span class="fu">generate_plot_story</span><span class="op">(</span><span class="va">p</span>, provider <span class="op">=</span> <span class="st">"azure"</span>, model <span class="op">=</span> <span class="st">"gpt-4.1-mini"</span>, max_tokens <span class="op">=</span> <span class="fl">300</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># To use as subtitle:</span></span></span>
